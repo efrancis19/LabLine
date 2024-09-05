@@ -1,6 +1,6 @@
-# CA472 template repo
+# CSC1118 template repo
 
-This is a template for CA472 projects.
+This is a template for CSC1118 projects.
 
 ## 1. Create your repo
 
@@ -8,8 +8,8 @@ One person from your project team should fork this repo, then add other teammate
 
 ## 2. Name your repo appropriately
 
-The name of your project repo must be of the form `2025-ca472-XXXXXXX`, where "`XXXXXXX`"
-should be replaced with your usernames (e.g. `2025-ca472-sblott-pclarke`).
+The name of your project repo must be of the form `2025-csc1118-XXXXXXX`, where "`XXXXXXX`"
+should be replaced with your usernames (e.g. `2025-csc1118-sblott-pclarke`).
 
 It is the *name of your repo* which matters (not the name of your project).
 
