@@ -1,6 +1,7 @@
-<html>
-	<body>
-		<p>Hello World!</p>
-		<a href = "/sign_up/" class="btn btn-primary">Register</a>
-	</body>
-</html>
+{% if user.is_authenticated %}
+    <a class="nav-link" href="#">Welcome, {{user.username}}</a>
+    <a href = "/logout/" class="btn btn-primary">Logout</a>
+{%else%}
+	<a href = "/login/" class="btn btn-primary">Login</a>
+	<a href = "/sign_up/" class="btn btn-primary">Sign Up</a>
+{%endif%}
