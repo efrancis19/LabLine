@@ -2,9 +2,9 @@
 
 This is a template for CSC1118 projects.
 
-## 1. Create your repo
+## 1. Project Description
 
-One person from your project team should fork this repo, then add other teammates as project members on GitLab.
+This project is a queueing system that will allow students to make a request to a lab tutor when they need assistance in a computer lab. The system will allow students to receive quicker responses from lab tutors and allow lab tutors to have an organised list of students who need their help.
 
 ## 2. Name your repo appropriately
 
