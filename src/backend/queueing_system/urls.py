@@ -3,8 +3,10 @@ from . import views
 from .forms import *
 
 urlpatterns = [
-   path('', views.index, name="index"),
-   path('sign_up/', views.UserSignupView.as_view(), name="sign_up"),
-   path('login/',views.LoginView.as_view(template_name="login.html", authentication_form=UserLoginForm)),
-   path('logout/', views.logout_user, name="logout"),
-] 
+# index, admin views here.
+    path('', views.index, name='index'),
+    path('registerstudent/', views.StudentSignupView.as_view(), name='student_register'),
+    path('registerteacher/', views.TeacherSignupView.as_view(), name='register_teacher'),
+    path('login/',views.LoginView.as_view(template_name="login.html", authentication_form=UserLoginForm)),
+    path('logout/', views.logout_user, name="logout"),
+]
