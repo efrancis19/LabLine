@@ -9,4 +9,6 @@ urlpatterns = [
     path('registerteacher/', views.TeacherSignupView.as_view(), name='register_teacher'),
     path('login/',views.LoginView.as_view(template_name="login.html", authentication_form=UserLoginForm)),
     path('logout/', views.logout_user, name="logout"),
+    path('student/dashboard/', views.student_dashboard, name='student_dashboard'),
+    path('tutor/dashboard/', views.tutor_dashboard, name='tutor_dashboard'),
 ]

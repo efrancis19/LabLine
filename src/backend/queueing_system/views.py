@@ -9,6 +9,8 @@ from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from .forms import *
 from django.utils import timezone
 from .models import User
+from channels.layers import get_channel_layer
+from asgiref.sync import async_to_sync
 
 def index(request):
     user = request.user
@@ -55,3 +57,32 @@ class UserLoginView(LoginView):
 def logout_user(request):
     logout(request)
     return redirect("/")
+
+
+@login_required
+def student_dashboard(request):
+    if request.method == "POST" and "request_help" in request.POST:
+        # Create a help request for the logged-in student
+        HelpRequest.objects.create(student=request.user)
+
+        # Notify all connected tutor clients
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            "tutors",  # Group name for tutors
+            {
+                "type": "notify_tutors",
+                "message": f"New help request from {request.user.username}"
+            }
+        )
+
+        return render(request, 'student_dashboard.html', {'message': "Help request sent!"})
+    return render(request, 'student_dashboard.html')
+
+
+@login_required
+def tutor_dashboard(request):
+    if request.user.user_type == 'tutor':
+        help_requests = HelpRequest.objects.filter(resolved=False)
+        return render(request, 'tutor_dashboard.html', {'help_requests': help_requests})
+    return redirect('tutor_dashboard.html')
+

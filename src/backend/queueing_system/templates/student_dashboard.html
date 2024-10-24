@@ -3,4 +3,11 @@
     <a href = "/logout/" class="btn btn-primary">Logout</a>
 {%endif%}
 
-<h1> student </h1>
+<h2>Student Dashboard</h2>
+<form method="post">
+    {% csrf_token %}
+    <button type="submit" name="request_help">Request Help</button>
+</form>
+{% if message %}
+    <p>{{ message }}</p>
+{% endif %}
