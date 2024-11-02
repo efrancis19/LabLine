@@ -1,9 +1,7 @@
-from django.urls import path
+from django.urls import re_path
 from . import consumers
-from channels.routing import ProtocolTypeRouter, URLRouter
-from channels.auth import AuthMiddlewareStack
-import queueing_system.routing 
+
 
 websocket_urlpatterns = [
-    path('ws/tutor/', consumers.TutorConsumer.as_asgi()),
+    re_path(r'ws/socket-server/', consumers.ChatConsumer.as_asgi()),
 ]

@@ -11,26 +11,8 @@
 <body>
 
 <h2>Tutor Dashboard</h2> 
-<div id="notifications"></div>
 
-<script>
-    const notificationsDiv = document.getElementById('notifications');
 
-    // Connect to WebSocket
-    const socket = new WebSocket('ws://' + window.location.host + '/ws/tutor/');
-
-    // Receive messages from the WebSocket server
-    socket.onmessage = function(e) {
-        const data = JSON.parse(e.data);
-        const message = data.message;
-
-        // Display the message in the notifications div
-        const notification = document.createElement('p');
-        notification.textContent = message;
-        notificationsDiv.appendChild(notification);
-    };
-
-</script>
 
 </body>
 </html>

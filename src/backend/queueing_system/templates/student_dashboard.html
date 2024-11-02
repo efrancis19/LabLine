@@ -1,13 +1,78 @@
+<html>
+<head>
 {% if user.is_authenticated %}
-    <a class="nav-link" href="#">Welcome, {{user.username}}</a>
-    <a href = "/logout/" class="btn btn-primary">Logout</a>
-{%endif%}
-
-<h2>Student Dashboard</h2>
-<form method="post">
-    {% csrf_token %}
-    <button type="submit" name="request_help">Request Help</button>
-</form>
-{% if message %}
-    <p>{{ message }}</p>
+    <a class="nav-link" href="#">Welcome, {{ user.username }}</a>
+    <a href="/logout/" class="btn btn-primary">Logout</a>
 {% endif %}
+</head>
+
+<body>
+<h2>Student Dashboard</h2> 
+
+<form id="form">
+    <input type="text" name="message"/>
+</form>
+
+<div id="messages"></div> <!-- Corrected ID reference -->
+
+<script type="text/javascript">
+let url = `ws://${window.location.host}/ws/socket-server/`;
+let chatSocket;
+
+function connectWebSocket() {
+    chatSocket = new WebSocket(url);
+
+    chatSocket.onopen = function() {
+        console.log('WebSocket connection established.');
+    };
+
+    chatSocket.onmessage = function(e) {
+        let data = JSON.parse(e.data);
+        console.log('Data:', data);
+
+        if (data.type === 'chat') {
+            let messages = document.getElementById('messages');
+            messages.insertAdjacentHTML('beforeend', `
+                <div>
+                    <p>${data.message}</p>
+                </div>
+            `);
+        }
+    };
+
+    chatSocket.onclose = function(e) {
+        console.log('WebSocket connection closed. Reconnecting in 3 seconds...', e);
+        setTimeout(function() {
+            connectWebSocket();
+        }, 3000); // Reconnect after 3 seconds
+    };
+
+    chatSocket.onerror = function(e) {
+        console.error('WebSocket encountered an error:', e);
+        chatSocket.close(); // Close and trigger the onclose event
+    };
+}
+
+// Initialize WebSocket connection
+connectWebSocket();
+
+let form = document.getElementById('form');
+form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    let message = e.target.message.value;
+    
+    if (chatSocket.readyState === WebSocket.OPEN) {
+        chatSocket.send(JSON.stringify({
+            'message': message
+        }));
+        form.reset();
+    } else {
+        console.warn('WebSocket is not open. Message not sent.');
+    }
+});
+
+</script>
+
+
+</body>
+</html>
