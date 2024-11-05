@@ -1,43 +1,38 @@
 import json
 from channels.generic.websocket import AsyncWebsocketConsumer
 
-class ChatConsumer(AsyncWebsocketConsumer):
+class StudentConsumer(AsyncWebsocketConsumer):
     async def connect(self):
-        self.room_group_name = 'test'  # Name the group
-
-        # Join the group
-        await self.channel_layer.group_add(
-            self.room_group_name,
-            self.channel_name
-        )
-
-        await self.accept()  # Accept the WebSocket connection
+        self.group_name = "tutors_group"
+        await self.channel_layer.group_add(self.group_name, self.channel_name)
+        await self.accept()
 
     async def disconnect(self, close_code):
-        # Leave the group when the WebSocket disconnects
-        await self.channel_layer.group_discard(
-            self.room_group_name,
-            self.channel_name
-        )
+        await self.channel_layer.group_discard(self.group_name, self.channel_name)
 
     async def receive(self, text_data):
         text_data_json = json.loads(text_data)
-        message = text_data_json['message']
+        if text_data_json['type'] == 'help_request':
+            await self.channel_layer.group_send(
+                self.group_name,
+                {
+                    'type': 'tutor_alert',
+                    'message': f"Student needs help at PC {text_data_json['pc_number']}: {text_data_json['description']}"
+                }
+            )
 
-        # Send message to the group
-        await self.channel_layer.group_send(
-            self.room_group_name,
-            {
-                'type': 'chat_message',
-                'message': message
-            }
-        )
+class TutorConsumer(AsyncWebsocketConsumer):
+    async def connect(self):
+        self.group_name = "tutors_group"
+        await self.channel_layer.group_add(self.group_name, self.channel_name)
+        await self.accept()
 
-    async def chat_message(self, event):
+    async def disconnect(self, close_code):
+        await self.channel_layer.group_discard(self.group_name, self.channel_name)
+
+    async def tutor_alert(self, event):
         message = event['message']
-
-        # Send message to the WebSocket
         await self.send(text_data=json.dumps({
-            'type': 'chat',
+            'type': 'help_response',
             'message': message
         }))

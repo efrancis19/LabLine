@@ -1,18 +1,56 @@
-
 <html>
 <head>
-{% if user.is_authenticated %}
-    <a class="nav-link" href="#">Welcome, {{user.username}}</a>
-    <a href = "/logout/" class="btn btn-primary">Logout</a>
-{%endif%}
-
+    {% if user.is_authenticated %}
+        <a class="nav-link" href="#">Welcome, {{ user.username }}</a>
+        <a href="/logout/" class="btn btn-primary">Logout</a>
+    {% endif %}
 </head>
 
 <body>
+    <h2>Tutor Dashboard</h2>
 
-<h2>Tutor Dashboard</h2> 
+    <div id="help-requests"></div> <!-- Display help requests from students -->
 
+    <script type="text/javascript">
+        let url = `ws://${window.location.host}/ws/tutor/`;
+        let chatSocket;
 
+        function connectWebSocket() {
+            chatSocket = new WebSocket(url);
 
+            chatSocket.onopen = function() {
+                console.log('WebSocket connection established.');
+            };
+
+            chatSocket.onmessage = function(e) {
+                let data = JSON.parse(e.data);
+                console.log('Data:', data);
+
+                if (data.type === 'help_response') {
+                    let helpRequests = document.getElementById('help-requests');
+                    helpRequests.insertAdjacentHTML('beforeend', `
+                        <div>
+                            <p><strong>New Help Request:</strong> ${data.message}</p>
+                        </div>
+                    `);
+                }
+            };
+
+            chatSocket.onclose = function(e) {
+                console.log('WebSocket connection closed. Reconnecting in 3 seconds...', e);
+                setTimeout(function() {
+                    connectWebSocket();
+                }, 3000); // Reconnect after 3 seconds
+            };
+
+            chatSocket.onerror = function(e) {
+                console.error('WebSocket encountered an error:', e);
+                chatSocket.close(); // Close and trigger the onclose event
+            };
+        }
+
+        // Initialize WebSocket connection
+        connectWebSocket();
+    </script>
 </body>
 </html>
