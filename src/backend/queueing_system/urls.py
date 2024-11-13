@@ -8,6 +8,7 @@ urlpatterns = [
     path('registeruser/', views.UserSignupView.as_view(), name='student_register'),
     path('login/',views.LoginView.as_view(template_name="login.html", authentication_form=UserLoginForm)),
     path('logout/', views.logout_user, name="logout"),
+    path('about_us/', views.about_us, name='about_us')
 ]
 
 

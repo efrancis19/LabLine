@@ -1,7 +1,21 @@
-{% if user.is_authenticated %}
-    <a class="nav-link" href="#">Welcome! {{user.username}}</a>
-    <a href = "/logout/" class="btn btn-primary">Logout</a>
-{%else%}
-	<a href = "/login/" class="btn btn-primary">Login</a>
-	<a href = "/registeruser/" class="btn btn-primary">Sign Up/Register</a>
-{%endif%}
+<html>
+<body>
+{% extends 'base.html' %}
+{% block content %}
+    {% if user.is_authenticated %}
+        {% elif user.is_student %}
+            <a class="nav-link" href="#">Welcome student! {{user.username}}</a>
+            <a href = "/logout/" class="btn btn-primary">Logout</a>
+        {% elif user.is_tutor %}
+            <a class="nav-link" href="#">Welcome tutor! {{user.username}}</a>
+            <a href = "/logout/" class="btn btn-primary">Logout</a>
+            <p>Request List</p>
+    {%else%}
+        <a href = "/login/" class="btn btn-primary">Login</a>
+        <a href = "/registeruser/" class="btn btn-primary">Sign Up/Register</a>
+    {%endif%}
+    <h1>Welcome to "Company Name"!</h1>
+        <p>Click <b>"sign up/register"</b> to create an account and indicate if you are a student or a tutor!</p>
+{% endblock %}
+</body>
+</html>

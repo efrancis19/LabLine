@@ -1,8 +1,11 @@
 <html>
 <head>
+{% extends 'base.html' %}
+{% block content %}
     {% if user.is_authenticated %}
-        <a class="nav-link" href="#">Welcome, {{ user.username }}</a>
         <a href="/logout/" class="btn btn-primary">Logout</a>
+        <a class="nav-link" href="#">Request List</a>
+        <a class="nav-link" href="#">Welcome, tutor {{ user.username }}</a>
     {% endif %}
 </head>
 
@@ -52,5 +55,6 @@
         // Initialize WebSocket connection
         connectWebSocket();
     </script>
+{% endblock %}
 </body>
 </html>

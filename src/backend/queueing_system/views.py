@@ -34,8 +34,8 @@ class UserSignupView(CreateView):
         user = form.save()
         login(self.request, user)
         return redirect('/')
+  
     
-
 class UserLoginView(LoginView):
     template_name = 'login.html'
 
@@ -43,3 +43,7 @@ class UserLoginView(LoginView):
 def logout_user(request):
     logout(request)
     return redirect("/")
+
+
+def about_us(request):
+    return render(request, 'about_us.html')
