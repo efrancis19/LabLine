@@ -1,14 +1,14 @@
 <html>
 <head>
-{% extends 'base.html' %}
+{% extends 'base.html' %} 
 {% load static %}
 <link rel="stylesheet" href="{% static 'style.css' %}">
 {% block content %}
-    {% if user.is_authenticated %}
+    {% if user.is_authenticated %} 
         <a href="/logout/" class="btn btn-primary">Logout</a>
         <a class="nav-link" href="#">Your Requests</a>
         <a class="nav-link" href="#">Welcome, student {{ user.username }}</a>
-    {% endif %}
+{% endif %}
 </head>
 
 <body>
@@ -49,6 +49,8 @@
                             <p><strong>Tutor Response:</strong> ${data.message}</p>
                         </div>
                     `);
+                } else if (data.type === 'no_tutor') {
+                    alert("No tutors available. Please try again later.");
                 }
             };
 

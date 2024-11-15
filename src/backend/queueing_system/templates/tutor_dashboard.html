@@ -12,7 +12,7 @@
 <body>
     <h2>Tutor Dashboard</h2>
 
-    <div id="help-requests"></div> <!-- Display help requests from students -->
+    <div id="help-requests"></div> <!-- Display incoming help requests -->
 
     <script type="text/javascript">
         let url = `ws://${window.location.host}/ws/tutor/`;
@@ -29,11 +29,12 @@
                 let data = JSON.parse(e.data);
                 console.log('Data:', data);
 
-                if (data.type === 'help_response') {
+                if (data.type === 'help_request') {
                     let helpRequests = document.getElementById('help-requests');
                     helpRequests.insertAdjacentHTML('beforeend', `
                         <div>
-                            <p><strong>New Help Request:</strong> ${data.message}</p>
+                            <p><strong>Student Request from PC ${data.pc_number}:</strong> ${data.message}</p>
+                            <button onclick="respondToStudent('${data.student_channel}', 'I am on my way!')">Respond</button>
                         </div>
                     `);
                 }
@@ -54,6 +55,19 @@
 
         // Initialize WebSocket connection
         connectWebSocket();
+
+        // Function to respond to student requests
+        function respondToStudent(studentChannel, message) {
+            if (chatSocket.readyState === WebSocket.OPEN) {
+                chatSocket.send(JSON.stringify({
+                    'type': 'help_response',
+                    'student_channel': studentChannel,
+                    'message': message
+                }));
+            } else {
+                console.warn('WebSocket is not open. Response not sent.');
+            }
+        }
     </script>
 {% endblock %}
 </body>
