@@ -1,27 +1,17 @@
-from django.contrib.auth.forms import UserCreationForm
-from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from django import forms
-from django.forms import ModelForm, ModelChoiceField
+from django.contrib.auth.forms import UserCreationForm
+from .models import CustomUser
+from django import forms
+from .models import HelpRequest
 
-from .models import User
-from django.db import transaction
+class CustomUserCreationForm(UserCreationForm): # Form for registering as a new user
+    user_type = forms.ChoiceField(choices=CustomUser.USER_TYPE_CHOICES) # User indicates their user type. The user types 'student' and 'tutor' are from the choices in the User model
 
-class UserSignupForm(UserCreationForm):
-    class Meta(UserCreationForm.Meta):
-        model = User
-        fields = ('username', 'email', 'user_type')
+    class Meta:
+        model = CustomUser
+        fields = ['user_type', 'username', 'email', 'password1', 'password2']   # Fields are inherited from the User model
 
-    @transaction.atomic
-    def save(self):
-        user = super().save(commit=False)
-        user.is_admin = False  # Ensure this is intentional
-        user.save()
-        return user  # Return the saved user instance, not the class
-
-    
-class UserLoginForm(AuthenticationForm):
-    def __init__(self, *args, **kwargs):
-        super(UserLoginForm, self).__init__(*args, **kwargs)
-    username = forms.CharField(widget=forms.TextInput(attrs={'placeholder':'Your username'}))
-    password = forms.CharField(widget=forms.PasswordInput(attrs={'placeholder':'Your password'}))
-
+class HelpRequestForm(forms.ModelForm): # Form for submitting a help request to a tutor as a student
+    class Meta:
+        model = HelpRequest
+        fields = ['pc_number', 'description']   # Fields are inherited from the HelpRequest model

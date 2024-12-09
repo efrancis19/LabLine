@@ -1,37 +1,47 @@
-<html>
-<body>
+
 {% extends 'base.html' %}
+
+{% block title %}About Us{% endblock %}
+
 {% block content %}
-    {% if user.is_authenticated %}
-        <a class="nav-link" href="#">Welcome! {{user.username}}</a>
-        <a href = "/logout/" class="btn btn-primary">Logout</a>
-    {%else%}
-        <a href = "/login/" class="btn btn-primary">Login</a>
-        <a href = "/registeruser/" class="btn btn-primary">Sign Up/Register</a>
-    {%endif%}
+<div class="container mt-4">
+    <div class="section-box mb-4">
+        <h2>About LabLine</h2>
+            <h3>Mission Statement</h3>
+                <p><i>Driven by accessibility, we strive to enhance the learning environment in universities by providing systems to improve accessibility to help for students.</i></p>
 
-    <h1>"Company Name"</h1>
-        <h2>Mission Statement</h2>
-            <p><i>Driven by accessibility, we strive to enhance the learning environment in universities by providing....</i></p>
+            <h3>Our Target Market</h3>
+                <p>The target market for our system is aimed towards universities with busy computer labs. We aim to focus initially on the Irish market and later expand further abroad.
+                </p>
 
-        <h2>Our Target Market</h2>
-            <p>The target market for our system is aimed towards universities with busy computer labs.</p>
-
-        <h2>Our Product</h2>
-            <p><b>"Product Name"</b> is a system for universities that strives to provide more accessible assistance to students and less stressful experience 
+            <h3>Our Product</h3>
+                <p><b>LabLine</b> is a system for universities that strives to provide more accessible assistance to students and a less stressful experience 
                 for lab tutors.</p>
 
-        <h2>System Features</h2>
-            <p><b>"Product Name"</b>includes the following features as part of the system:</p> 
+            <h3>System Features</h3>
+            <p><b>LabLine</b> includes the following features as part of the system:</p> 
             <ul>
                 <li><b>Authentication system</b> for both students and lab tutors to access the system.</li>
                 <li><b>Help request system</b> for students who can request assistance from a lab tutor. The student inputs their PC number and
-                    a description of their request which will be received by a lab tutor when they click send. This functionality was developed
-                    using Websocket and Django channels.</li>
+                a description of their request which will be received by a lab tutor when they click send.</li>
+                <li><b>View Requests</b> for each tutor to view a list of all the requests assigned to them.</li>
+                <li><b>Cancel request option</b> for students to cancel a request if it has been already resolved.</li>
+                <li><b>Accept request option</b> for tutors to accept a pending request on their dashboard.</li>
+                <li><b>Mark request as completed option</b> for tutors to indicate a request is complete once it has been resolved.</li>
             </ul>
 
-        <h2>Contact</h2>
-            <p></p>
-{% endblock %}
+            <h3>Technologies Used</h3>
+                <ul>
+                    <li>HTML, CSS and JavaScript for the frontend.</li>
+                    <li>Django and Python for the backend.</li>
+                    <li>Channels and WebSocket to handle request messaging from students to tutors.</li>
+                </ul>
 
-</body>
+            <h3>Authors</h3>
+                <ul>
+                    <li>Eoin Francis</li>
+                    <li>Harsh Saini</li>
+                </ul>
+    </div>
+</div>
+{% endblock %}

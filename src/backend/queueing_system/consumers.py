@@ -1,49 +1,38 @@
 from channels.generic.websocket import AsyncWebsocketConsumer
 import json
-from collections import deque
 
-active_tutors = deque()  # Stores channels of logged-in tutors
 
-class StudentConsumer(AsyncWebsocketConsumer):
+#This consumer ensures that updates 
+# (e.g., request creation, status changes) 
+# are pushed to the relevant users' dashboards in real time.
+
+
+class DashboardConsumer(AsyncWebsocketConsumer): 
     async def connect(self):
-        await self.accept()
+        # Getting the user ID from the URL or session
+        if self.scope["user"].is_anonymous:
+            await self.close()
+        else:
+            self.user_id = self.scope["user"].id
+            self.group_name = f"user_{self.user_id}"
+            
+            # Adding the user to their own group
+            await self.channel_layer.group_add(self.group_name, self.channel_name)
+            await self.accept()
 
     async def disconnect(self, close_code):
-        pass
+        # Removing the user from their group
+        await self.channel_layer.group_discard(self.group_name, self.channel_name)
 
-    async def receive(self, text_data):
-        data = json.loads(text_data)
-        if data['type'] == 'help_request':
-            if active_tutors:
-                # Get the next tutor in line and requeue them
-                tutor_channel = active_tutors.popleft()
-                await self.channel_layer.send(
-                    tutor_channel,
-                    {
-                        'type': 'help.message',
-                        'message': data['description'],
-                        'pc_number': data['pc_number'],
-                        'student_channel': self.channel_name
-                    }
-                )
-                active_tutors.append(tutor_channel)
-            else:
-                await self.send(text_data=json.dumps({
-                    'message': "No tutors available at the moment. Please try again later."
-                }))
-
-class TutorConsumer(AsyncWebsocketConsumer):
-    async def connect(self):
-        await self.accept()
-        active_tutors.append(self.channel_name)
-
-    async def disconnect(self, close_code):
-        # Remove tutor from active list on disconnect
-        if self.channel_name in active_tutors:
-            active_tutors.remove(self.channel_name)
-
-    async def help_message(self, event):
-        await self.send(text_data=json.dumps({
-            'message': event['message'],
-            'pc_number': event['pc_number']
-        }))
+    # Receiving messages from group and send to WebSocket
+    async def update_dashboard(self, event):
+        # Preparing the message payload
+        message = {
+            "message": event.get("message"),
+            "type": event.get("event_type"),
+            "request_id": event.get("request_id"),
+            "new_status": event.get("new_status"),
+            "description": event.get("description"),
+            "student": event.get("student"),
+        }
+        await self.send(text_data=json.dumps(message))

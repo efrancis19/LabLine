@@ -1,74 +1,168 @@
-<html>
-<head>
 {% extends 'base.html' %}
+
+{% block title %}Tutor Dashboard{% endblock %}
+
 {% block content %}
-    {% if user.is_authenticated %}
-        <a href="/logout/" class="btn btn-primary">Logout</a>
-        <a class="nav-link" href="#">Request List</a>
-        <a class="nav-link" href="#">Welcome, tutor {{ user.username }}</a>
-    {% endif %}
-</head>
+<div class="container mt-4">
+    <h2 class="text-center mb-4">Welcome, {{ user.username }}</h2>
 
-<body>
-    <h2>Tutor Dashboard</h2>
+    <!-- Assigned Requests Section -->
+    <div class="section-box mb-4">
+        <h3 class="section-title">Assigned Requests</h3>
+        <ul id="assigned-requests-list">
+            {% for request in assigned_requests %}
+            <li id="assigned-request-{{ request.id }}" class="request-item">
+                <b>{{ request.student.username }}</b> - {{ request.description }}
+                <button class="mark-completed" data-request-id="{{ request.id }}">Mark as Completed</button>
+            </li>
+            {% empty %}
+            <p>No assigned requests.</p>
+            {% endfor %}
+        </ul>
+    </div>
 
-    <div id="help-requests"></div> <!-- Display incoming help requests -->
+    <!-- Pending Requests Section -->
+    <div class="section-box mb-4">
+        <h3 class="section-title">Pending Requests</h3>
+        <ul id="pending-requests-list">
+            {% for request in pending_requests %}
+            <li id="pending-request-{{ request.id }}" class="request-item">
+                <b>{{ request.student.username }}</b> - {{ request.description }}
+                <button class="accept-request" data-request-id="{{ request.id }}">Accept</button>
+            </li>
+            {% empty %}
+            <p>No pending requests.</p>
+            {% endfor %}
+        </ul>
+    </div>
+</div>
 
-    <script type="text/javascript">
-        let url = `ws://${window.location.host}/ws/tutor/`;
-        let chatSocket;
+<script type="text/javascript">
+// Connect to the WebSocket for tutor dashboard updates through the url '/ws/dashboard/'
+function connectWebSocket(url, onMessage) {
+    let socket = new WebSocket('ws://' + window.location.host + '/ws/dashboard/');
 
-        function connectWebSocket() {
-            chatSocket = new WebSocket(url);
+    // 'onopen' event handler for when the WebSocket connection is established
+    socket.onopen = function () {
+        console.log("WebSocket connected to", url);
+    };
 
-            chatSocket.onopen = function() {
-                console.log('WebSocket connection established.');
-            };
+    // 'onmessage' event handler for when a message is received from the WebSocket
+    socket.onmessage = onMessage;   // 'onMessage' passed as a parameter
 
-            chatSocket.onmessage = function(e) {
-                let data = JSON.parse(e.data);
-                console.log('Data:', data);
+    // 'onerror' event handler if there is an error with the WebSocket connection
+    socket.onerror = function (error) {
+        console.error("WebSocket error:", error);   // Output in the console that there was an error connecting to WebSocket
+    };
 
-                if (data.type === 'help_request') {
-                    let helpRequests = document.getElementById('help-requests');
-                    helpRequests.insertAdjacentHTML('beforeend', `
-                        <div>
-                            <p><strong>Student Request from PC ${data.pc_number}:</strong> ${data.message}</p>
-                            <button onclick="respondToStudent('${data.student_channel}', 'I am on my way!')">Respond</button>
-                        </div>
-                    `);
+    // 'onclose' event handler, for when the WebSocket connection is closed
+    socket.onclose = function () {
+        console.error("WebSocket closed unexpectedly. Reconnecting...");
+        // Try to reconnect by calling the connectWebSocket function again after 5 seconds
+        setTimeout(function () {
+            connectWebSocket(url, onMessage); // Attempt to reconnect
+        }, 5000); // Retry connection after 5 seconds
+    };
+
+    // Return the WebSocket object, allowing the user to interact with the connection
+    return socket;
+}
+
+// WebSocket connection for dashboard updates
+const dashboardSocket = connectWebSocket(
+    'ws://' + window.location.host + '/ws/dashboard/',  // WebSocket URL
+    function (e) {
+        // 'onmessage' handler passed to the WebSocket
+        const data = JSON.parse(e.data);    // Parse incoming message data from the WebSocket
+        console.log("WebSocket message received:", data);   // Log the parsed data
+
+        // Check if the data type is a new request
+        if (data.type === 'new_request') {
+            const pendingRequestsList = document.getElementById("pending-requests-list");   // Get the pending requests list element from the DOM
+            const newRequestItem = document.createElement("li");    // Create a new list item element for the notification
+            newRequestItem.id = `pending-request-${data.request_id}`;   // Set the ID of the new list item to include the request ID so it can be identified
+            // Set the inner HTML of the new list item with the student name, request description, and 'Accept' link
+            newRequestItem.innerHTML = `
+                ${data.student} - ${data.description}
+                <a class="accept-request" data-request-id="${data.request_id}">Accept</a>
+            `;
+            pendingRequestsList.appendChild(newRequestItem);    // Append the new request item to the pending requests list
+
+        // If the data type is 'status_update', handle the status update of a request
+        } else if (data.type === 'status_update') {
+            const requestId = data.request_id;  // Get the request ID
+            const newStatus = data.new_status;  // Get the new status of the request
+        
+            // Remove from assigned requests if completed
+            if (newStatus === "completed") {
+                const assignedRequest = document.getElementById(`assigned-request-${requestId}`);
+                if (assignedRequest) assignedRequest.remove();  // Remove the request from the DOM
+
+            // Check if the request is cancelled
+            } else if (newStatus === "canceled") {
+                const pendingRequest = document.getElementById(`pending-request-${requestId}`);
+                // If the request status is 'completed'
+                if (pendingRequest) {
+                    pendingRequest.remove();    // Remove the request from the assigned requests list
                 }
-            };
-
-            chatSocket.onclose = function(e) {
-                console.log('WebSocket connection closed. Reconnecting in 3 seconds...', e);
-                setTimeout(function() {
-                    connectWebSocket();
-                }, 3000); // Reconnect after 3 seconds
-            };
-
-            chatSocket.onerror = function(e) {
-                console.error('WebSocket encountered an error:', e);
-                chatSocket.close(); // Close and trigger the onclose event
-            };
-        }
-
-        // Initialize WebSocket connection
-        connectWebSocket();
-
-        // Function to respond to student requests
-        function respondToStudent(studentChannel, message) {
-            if (chatSocket.readyState === WebSocket.OPEN) {
-                chatSocket.send(JSON.stringify({
-                    'type': 'help_response',
-                    'student_channel': studentChannel,
-                    'message': message
-                }));
-            } else {
-                console.warn('WebSocket is not open. Response not sent.');
+                // Check if the request is in the assigned requests list
+                const assignedRequest = document.getElementById(`assigned-request-${requestId}`);
+                if (assignedRequest) {
+                    assignedRequest.remove();   // Remove from the assigned requests list if applicable
+                }
+            } else if (newStatus === "in_progress") {
+                // Remove from pending requests list if accepted
+                const pendingRequest = document.getElementById(`pending-request-${requestId}`);
+                if (pendingRequest) {
+                    pendingRequest.remove();    // Remove from pending list
+                }
+            
+                const assignedRequestsList = document.getElementById("assigned-requests-list"); // Add to assigned requests
+                const newAssignedItem = document.createElement("li");   // Create a new list item for the assigned request
+                newAssignedItem.id = `assigned-request-${requestId}`;   // Set the ID of the new list item to include the request ID so it can be identified
+                // Set the inner HTML of the new assigned request list item with student name, request description, and the 'Mark as Completed' link
+                newAssignedItem.innerHTML = `
+                    ${data.student} - ${data.description}
+                    <a class="mark-completed" data-request-id="${requestId}">Mark as Completed</a>
+                `;
+                // Append the new assigned request item to the assigned requests list
+                assignedRequestsList.appendChild(newAssignedItem);
             }
         }
-    </script>
+    }
+);
+
+// Add event listeners for dynamically generated buttons
+document.addEventListener("click", function (event) {
+    const target = event.target;
+
+    // Check if the clicked target has the class 'accept-request'
+    if (target.classList.contains("accept-request")) {
+        const requestId = target.getAttribute("data-request-id");   // If the target has the 'accept-request' class, get the request ID associated with this target element
+        fetch(`/accept_request/${requestId}/`, { method: "POST", headers: { "X-CSRFToken": "{{ csrf_token }}" } })  // Use fetch to send a POST request to accept the request on the WebSocket server. POST is used since an action is performed (accepting a request). A CSRF token is included for security
+            // Handle the response after the fetch call
+            .then((response) => {
+                // Check if the response was successful (status 200-299)
+                if (response.ok) {
+                    console.log("Request accepted successfully.");  // Output a success message to the console
+                }
+            });
+    }
+
+    // Check if the clicked target has the class 'mark-completed'
+    if (target.classList.contains("mark-completed")) {
+        const requestId = target.getAttribute("data-request-id");   // If the target has the 'mark-completed' class, get the request ID associated with this target element
+        fetch(`/mark_completed/${requestId}/`, { method: "POST", headers: { "X-CSRFToken": "{{ csrf_token }}" } })  // Use fetch to send a POST request to accept the request on the WebSocket server. POST is used since an action is performed (marking a request as completed). A CSRF token is included for security
+            // Handle the response after the fetch call
+            .then((response) => {
+                // Check if the response was successful (status 200-299)
+                if (response.ok) {
+                    console.log("Request marked as completed successfully.");   // Output a success message to the console
+                }
+            });
+    }
+});
+
+</script>
+
 {% endblock %}
-</body>
-</html>

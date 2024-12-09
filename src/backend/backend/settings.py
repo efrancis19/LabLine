@@ -135,5 +135,12 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+ASGI_APPLICATION = "backend.asgi.application"
 
-AUTH_USER_MODEL = 'queueing_system.User'
+AUTH_USER_MODEL = 'queueing_system.CustomUser'
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels.layers.InMemoryChannelLayer",
+    },
+}

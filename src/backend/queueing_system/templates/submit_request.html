@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+
+{% block title %}Submit Help Request{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="text-center mb-4">Submit a New Help Request</h2>
+    <!-- Form Container -->
+    <form method="post" class="mx-auto p-4 rounded form-container">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <div class="text-center">
+            <button type="submit" class="btn submit-button mt-3">Submit</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

@@ -1,94 +1,142 @@
-<html>
-<head>
-{% extends 'base.html' %} 
-{% load static %}
-<link rel="stylesheet" href="{% static 'style.css' %}">
+{% extends 'base.html' %}
+
+{% block title %}Student Dashboard{% endblock %}
+
 {% block content %}
-    {% if user.is_authenticated %} 
-        <a href="/logout/" class="btn btn-primary">Logout</a>
-        <a class="nav-link" href="#">Your Requests</a>
-        <a class="nav-link" href="#">Welcome, student {{ user.username }}</a>
-{% endif %}
-</head>
+<div class="container mt-4">
+    <h2 class="text-center mb-4">Welcome, {{ user.username }}</h2>
 
-<body>
-    <h2>Student Dashboard</h2>
 
-    <!-- Help Request Form -->
-    <form id="help-form">
-        <label for="pc-number">PC Number:</label>
-        <input type="text" id="pc-number" name="pc_number" required />
-        <br>
-        <label for="description">Issue Description:</label>
-        <textarea id="description" name="description" required></textarea>
-        <br>
-        <button type="submit">Request Help</button>
-    </form>
+    <div class="section-box mb-4">
+        <h3>Your Help Requests</h3>
+        <p>Help requests you make will appear here:</p>
+        <ul id="help-requests-list">
+            {% for request in help_requests %}
+            <li id="request-{{ request.id }}" class="request-item">
+                {{ request.description }} - Status: <b><span class="status">{{ request.status }}</span></b>
+                {% if request.status == "pending" %}
+                <button class="cancel-request" data-request-id="{{ request.id }}">Cancel</button>
+                {% elif request.status == "in_progress" %}
+                <button class="mark-completed" data-request-id="{{ request.id }}">Mark Completed</button>
+                {% endif %}
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
 
-    <div id="messages"></div> <!-- Display messages and notifications -->
+    <div class="section-box">
+        <h3>Need Help?</h3>
+        <a href="{% url 'submit_request' %}" class="btn submit-button">Submit a New Help Request</a>
+    </div>
 
-    <script type="text/javascript">
-        let url = `ws://${window.location.host}/ws/student/`;
-        let chatSocket;
+    <div class="section-box">
+        <h3>Notifications</h3>
+        <ul id="notification-list"></ul>
+    </div>
+</div>
 
-        function connectWebSocket() {
-            chatSocket = new WebSocket(url);
+<script>
+    // Connect to the WebSocket for student dashboard updates through the url '/ws/dashboard/'
+    function connectWebSocket(url, onMessage) {
+        let socket = new WebSocket('ws://' + window.location.host + '/ws/dashboard/');
+        
+        // 'onopen' event handler for when the WebSocket connection is established
+        socket.onopen = function () {
+            console.log("WebSocket connected to", url); // Output in the console that the connection was successful
+        };
+        
+        // 'onmessage' event handler for when a message is received from the WebSocket
+        socket.onmessage = onMessage;   // 'onMessage' passed as a parameter
 
-            chatSocket.onopen = function() {
-                console.log('WebSocket connection established.');
-            };
+        // 'onerror' event handler if there is an error with the WebSocket connection
+        socket.onerror = function (error) {
+            console.error("WebSocket error:", error);   // Output in the console that there was an error connecting to WebSocket
+        };
 
-            chatSocket.onmessage = function(e) {
-                let data = JSON.parse(e.data);
-                console.log('Data:', data);
+        // 'onclose' event handler, for when the WebSocket connection is closed
+        socket.onclose = function () {
+            console.log("WebSocket disconnected. Reconnecting...");
+            // Try to reconnect by calling the connectWebSocket function again after 5 seconds
+            setTimeout(function () {
+                connectWebSocket(url, onMessage); // Attempt to reconnect
+            }, 5000); // Retry connection after 5 seconds
+        };
+        
+        // Return the WebSocket object, allowing the user to interact with the connection
+        return socket;
+    }
 
-                if (data.type === 'help_response') {
-                    let messages = document.getElementById('messages');
-                    messages.insertAdjacentHTML('beforeend', `
-                        <div>
-                            <p><strong>Tutor Response:</strong> ${data.message}</p>
-                        </div>
-                    `);
-                } else if (data.type === 'no_tutor') {
-                    alert("No tutors available. Please try again later.");
-                }
-            };
+    // WebSocket connection for dashboard updates
+    const dashboardSocket = connectWebSocket(
+        'ws://' + window.location.host + '/ws/dashboard/',  // WebSocket URL
+        function (event) {
+            // 'onmessage' handler passed to the WebSocket
+            const data = JSON.parse(event.data);    // Parse incoming message data from the WebSocket
+            console.log("WebSocket message received:", data);   // Log the parsed data
 
-            chatSocket.onclose = function(e) {
-                console.log('WebSocket connection closed. Reconnecting in 3 seconds...', e);
-                setTimeout(function() {
-                    connectWebSocket();
-                }, 3000); // Reconnect after 3 seconds
-            };
-
-            chatSocket.onerror = function(e) {
-                console.error('WebSocket encountered an error:', e);
-                chatSocket.close(); // Close and trigger the onclose event
-            };
-        }
-
-        // Initialize WebSocket connection
-        connectWebSocket();
-
-        // Handle the help request form submission
-        let form = document.getElementById('help-form');
-        form.addEventListener('submit', (e) => {
-            e.preventDefault();
-            let pcNumber = document.getElementById('pc-number').value;
-            let description = document.getElementById('description').value;
-
-            if (chatSocket.readyState === WebSocket.OPEN) {
-                chatSocket.send(JSON.stringify({
-                    'type': 'help_request',
-                    'pc_number': pcNumber,
-                    'description': description
-                }));
-                form.reset();
-            } else {
-                console.warn('WebSocket is not open. Message not sent.');
+            // Check if incoming data contains a message
+            if (data.message) {
+                // Add notification to the notification list if a message exists in the data
+                const notificationList = document.getElementById("notification-list");  // Get the notification list element from the DOM
+                const notificationItem = document.createElement("li");  // Create a new list item element for the notification
+                notificationItem.textContent = data.message;    // Set the text content of the list item to the message
+                notificationList.appendChild(notificationItem);  // Append the new notification item to the notification list in the DOM
             }
-        });
-    </script>
+
+            // Check if the data is related to 'status_update'
+            if (data.type === 'status_update') {
+                // Extract the request ID and the new status from the data
+                const requestId = data.request_id;
+                const newStatus = data.new_status;
+
+                // Update the status in the DOM
+                
+                const requestElement = document.getElementById(`request-${requestId}`); // Get the request element by its ID (request-${requestId})
+                // If the request element exists in the DOM
+                if (requestElement) {
+                    const statusElement = requestElement.querySelector(".status");  // Get the status element within this request
+                    statusElement.textContent = newStatus;  // Update the text content of the status element with the new status
+
+                    // remove buttons for completed requests
+                    if (newStatus === "completed" || newStatus === "canceled") {
+                        const buttons = requestElement.querySelectorAll("button");  // Get all button elements within the request element
+                        buttons.forEach(button => button.remove()); // Loop through every button and remove each one from the DOM
+                    }
+                }
+            }
+        }
+    );
+
+    // Add event listeners for dynamically generated buttons
+    document.addEventListener("click", function (event) {
+        const target = event.target;
+
+        // Check if the clicked target has the class 'cancel-request'
+        if (target.classList.contains("cancel-request")) {
+            const requestId = target.getAttribute("data-request-id");   // If the target has the 'cancel-request' class, get the request ID associated with this target element
+            fetch(`/cancel_request/${requestId}/`, { method: "POST", headers: { "X-CSRFToken": "{{ csrf_token }}" } })  // Use fetch to send a POST request to cancel the request on the WebSocket server. POST is used since an action is performed (cancelling a request). A CSRF token is included for security
+                // Handle the response after the fetch call
+                .then(response => {
+                    // Check if the response was successful (status 200-299)
+                    if (response.ok) {
+                        console.log("Request canceled successfully.");  // Output a success message to the console
+                    }
+                });
+
+        // If the clicked target does not have the class 'cancel-request', then check for 'mark-completed'
+        } else if (target.classList.contains("mark-completed")) {
+            const requestId = target.getAttribute("data-request-id");   // If the target has the 'mark-completed' class, get the request ID associated with this target element
+            fetch(`/mark_completed/${requestId}/`, { method: "POST", headers: { "X-CSRFToken": "{{ csrf_token }}" } })  // Use fetch to send a POST request to cancel the request on the WebSocket server. POST is used since an action is performed (marking a request as completed). A CSRF token is included for security
+                // Handle the response after the fetch call
+                .then(response => {
+                    // Check if the response was successful (status 200-299)
+                    if (response.ok) {
+                        console.log("Request marked as completed.");    // Output a success message to the console
+                    }
+                });
+        }
+    });
+</script>
+
+
 {% endblock %}
-</body>
-</html>

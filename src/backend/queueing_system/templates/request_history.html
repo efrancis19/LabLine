@@ -1,0 +1,83 @@
+{% extends 'base.html' %}
+
+{% block title %}Request History{% endblock %}
+
+
+
+
+{% block content %}
+<div class="container mt-4">
+    <div class="section-box">
+        <h1>Previous Requests</h1>
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Student</th>
+                    <th>Tutor</th>
+                    <th>PC Number</th>
+                    <th>Description</th>
+                    <th>Status</th>
+                    <th>Created At</th>
+                    <th>Updated At</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for help_request in help_requests %}
+                <tr>
+                    <td>{{ help_request.student }}</td>
+                    <td>{{ help_request.tutor }}</td>
+                    <td>{{ help_request.pc_number }}</td>
+                    <td>{{ help_request.description }}</td>
+                    <td>{{ help_request.status }}</td>
+                    <td>{{ help_request.created_at }}</td>
+                    <td>{{ help_request.updated_at }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+<script>
+    $(document).ready(function () {
+        $('#button_submit').on('click', function () {
+            // Obtain the CSRF token from the hidden input field
+            var csrfToken = $('[name="csrfmiddlewaretoken"]').val();
+
+            // Get the data from the form
+            var formData = {
+                'pc_number': $('#pc_number').val(),
+                'description': $('#description').val()
+            };
+
+            // Send AJAX request
+            $.ajax({
+                type: 'POST',
+                url: '/main/submit_request/',  // Adjust the URL as per your project structure
+                data: formData,
+                headers: {
+                    'X-CSRFToken': csrfToken
+                },
+                success: function (response) {
+                    if (response.status === 'success') {
+                        // Clear the form
+                        $('#pc_number').val('');
+                        $('#description').val('');
+
+                        // Update the table
+                        $('#table1 tbody').append(
+                            '<tr><td>' + formData.name + '</td><td>' + formData.age + '</td></tr>'
+                        );
+                    } else {
+                        alert('Error adding patient');
+                    }
+                },
+                error: function () {
+                    alert('Error adding patient');
+                }
+            });
+        });
+    });
+</script>
+</body>
+</html>
