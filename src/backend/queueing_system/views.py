@@ -7,8 +7,9 @@ from django.contrib.auth.forms import AuthenticationForm
 from django.http import JsonResponse
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
+from collections import deque
 
-
+request_queue = deque() # Deque used to store requests sent by students
 
 def home(request):
     return render(request, 'index.html')
@@ -75,6 +76,8 @@ def submit_request(request):
             help_request = form.save(commit=False)
             help_request.student = request.user # Associate the request with the logged-in student
             help_request.save()
+            request_queue.append(help_request) # Add the request to the queue
+            print(request_queue)
 
             # Notify tutors about the new request
             tutors = CustomUser.objects.filter(user_type='tutor')
@@ -97,11 +100,14 @@ def submit_request(request):
 def accept_request(request, pk):
     help_request = get_object_or_404(HelpRequest, pk=pk, status='pending')
     help_request.tutor = request.user
-    help_request.status = 'in_progress' # Change the status of the request to 'in_progress' to reflect it being accepted by a tutor
-    help_request.save()
+    if help_request == request_queue[0]:
+        help_request.status = 'in_progress' # Change the status of the request to 'in_progress' to reflect it being accepted by a tutor
+        help_request.save()
+        request_queue.popleft() # Pop the request from the queue since a tutor has accepted it
+        print(request_queue)
 
-    # Notify student and tutor
-    notify_dashboard(
+        # Notify student and tutor
+        notify_dashboard(
         help_request.student.id,
         f"Your request '{help_request.description}' has been accepted by {request.user.username}.",
         event_type="status_update",
@@ -110,7 +116,7 @@ def accept_request(request, pk):
         student=help_request.student.username,
         description=help_request.description,
     )
-    notify_dashboard(
+        notify_dashboard(
         request.user.id,
         f"You have accepted the request '{help_request.description}'.",
         event_type="status_update",
@@ -119,6 +125,8 @@ def accept_request(request, pk):
         student=help_request.student.username,
         description=help_request.description,
     )
+    else:
+        print("This request is not first in the queue!")
     
     return redirect('tutor_dashboard')
 
@@ -146,6 +154,8 @@ def cancel_request(request, pk):
     if request.user == help_request.student:
         help_request.status = 'canceled'
         help_request.save()
+        request_queue.remove(help_request)  # Remove the request from the queue since it has been cancelled
+        print(request_queue)
 
         # Notify the student (their own cancellation) and their assigned tutor about it.
         notify_dashboard(

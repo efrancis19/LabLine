@@ -26,9 +26,14 @@
         <h3 class="section-title">Pending Requests</h3>
         <ul id="pending-requests-list">
             {% for request in pending_requests %}
-            <li id="pending-request-{{ request.id }}" class="request-item">
-                <b>{{ request.student.username }}</b> - {{ request.description }}
-                <button class="accept-request" data-request-id="{{ request.id }}">Accept</button>
+                {% if forloop.first %}                  <!-- If the request is first in the queue, add the request details and accept button -->
+                    <li id="pending-request-{{ request.id }}" class="request-item">
+                    <b>{{ forloop.counter }}. {{ request.student.username }}</b> - {{ request.description }}
+                    <button class="accept-request" data-request-id="{{ request.id }}">Accept</button>
+                {% else %}                              <!-- If the request is not first in the queue, add only the request details since it is not yet first in the queue -->
+                    <li id="pending-request-{{ request.id }}" class="request-item">
+                    <b>{{ forloop.counter }}. {{ request.student.username }}</b> - {{ request.description }}
+                {% endif %}
             </li>
             {% empty %}
             <p>No pending requests.</p>
@@ -87,6 +92,7 @@ const dashboardSocket = connectWebSocket(
                 <a class="accept-request" data-request-id="${data.request_id}">Accept</a>
             `;
             pendingRequestsList.appendChild(newRequestItem);    // Append the new request item to the pending requests list
+
 
         // If the data type is 'status_update', handle the status update of a request
         } else if (data.type === 'status_update') {
