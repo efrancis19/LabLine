@@ -87,11 +87,19 @@ const dashboardSocket = connectWebSocket(
             const newRequestItem = document.createElement("li");    // Create a new list item element for the notification
             newRequestItem.id = `pending-request-${data.request_id}`;   // Set the ID of the new list item to include the request ID so it can be identified
             // Set the inner HTML of the new list item with the student name, request description, and 'Accept' link
-            newRequestItem.innerHTML = `
+            if (pendingRequestsList.children.length === 0) {
+                newRequestItem.innerHTML = `
                 ${data.student} - ${data.description}
                 <a class="accept-request" data-request-id="${data.request_id}">Accept</a>
             `;
+            }
+            else if (pendingRequestsList.children.length > 0) {
+                newRequestItem.innerHTML = `
+                ${data.student} - ${data.description}
+            `;
+            }
             pendingRequestsList.appendChild(newRequestItem);    // Append the new request item to the pending requests list
+            console.log(pendingRequestsList.children.length)
 
 
         // If the data type is 'status_update', handle the status update of a request
@@ -122,6 +130,13 @@ const dashboardSocket = connectWebSocket(
                 if (pendingRequest) {
                     pendingRequest.remove();    // Remove from pending list
                 }
+                const pendingRequestsList = document.getElementById("pending-requests-list");
+                pendingRequestsList[0] = `
+                ${data.student} - ${data.description}
+                <a class="accept-request" data-request-id="${data.request_id}">Accept</a>
+                `;
+                console.log(pendingRequestsList[0])
+                console.log(pendingRequestsList.children.length)
             
                 const assignedRequestsList = document.getElementById("assigned-requests-list"); // Add to assigned requests
                 const newAssignedItem = document.createElement("li");   // Create a new list item for the assigned request
