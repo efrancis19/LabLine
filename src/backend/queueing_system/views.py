@@ -10,6 +10,7 @@ from channels.layers import get_channel_layer
 from collections import deque
 
 request_queue = deque() # Deque used to store requests sent by students
+assigned_requests = deque()
 
 def home(request):
     return render(request, 'index.html')
@@ -104,7 +105,9 @@ def accept_request(request, pk):
         help_request.status = 'in_progress' # Change the status of the request to 'in_progress' to reflect it being accepted by a tutor
         help_request.save()
         request_queue.popleft() # Pop the request from the queue since a tutor has accepted it
+        assigned_requests.append(help_request)
         print(request_queue)
+        print(assigned_requests)
 
         # Notify student and tutor
         notify_dashboard(
@@ -154,8 +157,12 @@ def cancel_request(request, pk):
     if request.user == help_request.student:
         help_request.status = 'canceled'
         help_request.save()
-        request_queue.remove(help_request)  # Remove the request from the queue since it has been cancelled
-        print(request_queue)
+        if help_request in request_queue:
+            request_queue.remove(help_request)  # Remove the request from the queue since it has been cancelled
+            print(request_queue)
+        elif help_request in assigned_requests:
+            assigned_requests.remove(help_request)
+            print(request_queue)
 
         # Notify the student (their own cancellation) and their assigned tutor about it.
         notify_dashboard(

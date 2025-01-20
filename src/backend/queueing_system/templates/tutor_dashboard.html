@@ -16,7 +16,6 @@
                 <button class="mark-completed" data-request-id="{{ request.id }}">Mark as Completed</button>
             </li>
             {% empty %}
-            <p>No assigned requests.</p>
             {% endfor %}
         </ul>
     </div>
@@ -35,10 +34,8 @@
                     <b>{{ forloop.counter }}. {{ request.student.username }}</b> - {{ request.description }}
                 {% endif %}
             </li>
-            {% empty %}
-            <p>No pending requests.</p>
+            </ul>
             {% endfor %}
-        </ul>
     </div>
 </div>
 
@@ -46,6 +43,11 @@
 // Connect to the WebSocket for tutor dashboard updates through the url '/ws/dashboard/'
 function connectWebSocket(url, onMessage) {
     let socket = new WebSocket('ws://' + window.location.host + '/ws/dashboard/');
+    socket.onload = function () {
+    const pendingRequestsList = document.getElementById("pending-requests-list");
+    if (pendingRequestsList.children.length === 0) {
+    pendingRequestsList.innerHTML = '';
+    }}
 
     // 'onopen' event handler for when the WebSocket connection is established
     socket.onopen = function () {
@@ -84,6 +86,9 @@ const dashboardSocket = connectWebSocket(
         // Check if the data type is a new request
         if (data.type === 'new_request') {
             const pendingRequestsList = document.getElementById("pending-requests-list");   // Get the pending requests list element from the DOM
+            setTimeout(() => {
+                console.log('list length:', pendingRequestsList.children.length);
+            }, 0);
             const newRequestItem = document.createElement("li");    // Create a new list item element for the notification
             newRequestItem.id = `pending-request-${data.request_id}`;   // Set the ID of the new list item to include the request ID so it can be identified
             // Set the inner HTML of the new list item with the student name, request description, and 'Accept' link
@@ -99,6 +104,10 @@ const dashboardSocket = connectWebSocket(
             `;
             }
             pendingRequestsList.appendChild(newRequestItem);    // Append the new request item to the pending requests list
+            setTimeout(() => {
+                console.log('list length:', pendingRequestsList.children.length);
+                console.log('list:', pendingRequestsList);
+            }, 0);
             console.log(pendingRequestsList.children.length)
 
 
