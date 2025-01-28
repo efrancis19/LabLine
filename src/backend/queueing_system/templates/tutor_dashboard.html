@@ -25,10 +25,13 @@
         <h3 class="section-title">Pending Requests</h3>
         <ul id="pending-requests-list">
             {% for request in pending_requests %}
-                {% if forloop.first %}                  <!-- If the request is first in the queue, add the request details and accept button -->
+                {% if forloop.first and assigned_requests|length == 0 %}                  <!-- If the request is first in the queue, add the request details and accept button -->
                     <li id="pending-request-{{ request.id }}" class="request-item">
                     <b>{{ forloop.counter }}. {{ request.student.username }}</b> - {{ request.description }}
                     <button class="accept-request" data-request-id="{{ request.id }}">Accept</button>
+                {% elif forloop.first and assigned_requests|length > 0 %}
+                    <li id="pending-request-{{ request.id }}" class="request-item">
+                    <b>{{ forloop.counter }}. {{ request.student.username }}</b> - {{ request.description }}
                 {% else %}                              <!-- If the request is not first in the queue, add only the request details since it is not yet first in the queue -->
                     <li id="pending-request-{{ request.id }}" class="request-item">
                     <b>{{ forloop.counter }}. {{ request.student.username }}</b> - {{ request.description }}
@@ -140,6 +143,7 @@ const dashboardSocket = connectWebSocket(
                     pendingRequest.remove();    // Remove from pending list
                 }
                 const pendingRequestsList = document.getElementById("pending-requests-list");
+                const firstItem = pendingRequestsList.children[0];
                 pendingRequestsList[0] = `
                 ${data.student} - ${data.description}
                 <a class="accept-request" data-request-id="${data.request_id}">Accept</a>
