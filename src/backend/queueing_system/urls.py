@@ -13,6 +13,6 @@ urlpatterns = [
     path('cancel_request/<int:pk>/', views.cancel_request, name='cancel_request'),
     path('mark_completed/<int:pk>/', views.mark_completed, name='mark_completed'),
     path('request_history/', views.request_history, name='request_history'),
-    path('about_us/', views.about_us, name='about_us'),
+    #path('about_us/', views.about_us, name='about_us'),
     path('references/', views.references, name='references'),
 ]

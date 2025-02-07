@@ -198,8 +198,8 @@ def request_history(request):
     return render(request, 'request_history.html', {'help_requests': help_requests})
 
 
-def about_us(request):
-    return render(request, 'about_us.html')
+#def about_us(request):
+    #return render(request, 'about_us.html')
 
 
 def references(request):

@@ -75,7 +75,7 @@
         }
     
         input:focus, select:focus, textarea:focus {
-            border-color: #3498db; /* Highlight active input fields */
+            border-color: #3498db;
             outline: none;
         }
 
@@ -86,36 +86,32 @@
     
         
         .card {
-            background-color: #ffffff; /* White background for contrast */
-            border: 1px solid #e0e0e0; /* Light border for definition */
-            border-radius: 10px; /* Rounded corners for a modern look */
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Subtle shadow for depth */
-            padding: 20px; /* Inner spacing */
+            background-color: #ffffff;
+            border: 1px solid #e0e0e0;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            padding: 20px;
         }
 
-        /* Header styling for cards */
         .card-header {
             font-size: 1.5rem;
-            color: #2c3e50; /* Dark color for better readability */
+            color: #2c3e50;
             margin-bottom: 10px;
             text-align: center;
-            border-bottom: 1px solid #ddd; /* Separator line */
-            padding-bottom: 10px; /* Padding for clarity */
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 10px;
         }
 
-        /* Body styling for cards */
         .card-body {
             font-size: 1rem;
-            color: #555; /* Slightly muted text color */
-            line-height: 1.6; /* Improve readability */
+            color: #555;
+            line-height: 1.6;
         }
 
-        /* Card spacing */
         .card:not(:last-child) {
-            margin-bottom: 20px; /* Space between cards */
+            margin-bottom: 20px;
         }
 
-        /* Responsiveness */
         @media (max-width: 768px) {
             body {
                 margin: 2%;
@@ -128,37 +124,34 @@
 
           
         .section-box {
-            background-color: #f9fafc; /* Light background for contrast */
-            padding: 20px; /* Add padding to separate content */
-            border-radius: 10px; /* Rounded edges */
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Subtle shadow */
+            background-color: #f9fafc;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
         }
 
         .section-box:not(:last-child) {
-            margin-bottom: 20px; /* Space between sections */
+            margin-bottom: 20px;
         }
 
-        /* Section titles */
         .section-title {
             font-size: 1.5rem;
             color: #2c3e50;
             margin-bottom: 15px;
         }
 
-        /* List items within sections */
         .request-item {
-            margin-bottom: 10px; /* Space between requests */
+            margin-bottom: 10px;
             padding: 10px;
-            border: 1px solid #e0e0e0; /* Light border for separation */
+            border: 1px solid #e0e0e0;
             border-radius: 8px;
-            background-color: #ffffff; /* White background for requests */
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Minimal shadow for depth */
+            background-color: #ffffff;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
 
-        /* Buttons: Accept and Mark as Completed */
         .accept-request, .mark-completed {
-            background-color: limegreen; /* Green color */
-            color: white; /* White text */
+            background-color: limegreen;
+            color: white;
             border: none;
             border-radius: 8px;
             padding: 8px 12px;
@@ -167,13 +160,67 @@
         }
 
         .accept-request:hover, .mark-completed:hover {
-            background-color: mediumseagreen; /* Slightly darker green on hover */
+            background-color: mediumseagreen;
         }
 
         .accept-request:active, .mark-completed:active {
-            transform: scale(0.95); /* Click effect */
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2); /* Highlighted shadow */
+            transform: scale(0.95);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
         }
+
+        .login-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 80vh;
+            margin: auto;
+            max-width: 900px;
+        }
+
+        .login-box {
+            width: 50%;
+            background-color: #ffffff;
+            padding: 30px;
+            border-radius: 5px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .register-box {
+            width: 50%;
+            text-align: center;
+            background-color: #3498db;
+            color: white;
+            padding: 40px;
+            border-radius: 8px;
+        }
+
+        .register-btn {
+            display: inline-block;
+            background-color: white;
+            color: #3498db;
+            padding: 8px 16px;
+            border-radius: 5px;
+            text-decoration: none;
+            font-weight: bold;
+            transition: background 0.3s ease, transform 0.2s ease;
+        }
+
+        .register-btn:hover {
+            background-color: #f0f0f0;
+        }
+
+        @media (max-width: 768px) {
+            .login-container {
+                flex-direction: column;
+                height: auto;
+            }
+
+            .login-box, .register-box {
+                width: 100%;
+                margin-bottom: 20px;
+            }
+        }
+
 
     </style>
     
@@ -183,7 +230,6 @@
     <header>
         <nav class="navbar navbar-expand-lg navbar-light bg-light">
             <div class="container-fluid">
-                <a class="navbar-brand" href="/">Home</a>
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                     <span class="navbar-toggler-icon"></span>
                 </button>
@@ -191,21 +237,19 @@
                     <ul class="navbar-nav">
                             {% if user.is_authenticated %}
                                 {% if user.user_type == 'student' %}
+                                    <li class="nav-item"><a class="nav-link" href="/">Home</a></li>
                                     <li class="nav-item"><a class="nav-link" href="/logout">Logout</a></li>
                                     <li class="nav-item"><a class="nav-link" href="/student_dashboard">My Dashboard</a></li>
-                                    <li class="nav-item"><a class="nav-link" href="/about_us">About Us</a></li>
-                                    <li class="nav-item"><a class="nav-link" href="/references">References</a></li>
                                 {% elif user.user_type == 'tutor' %}
+                                    <li class="nav-item"><a class="nav-link" href="/">Home</a></li>
                                     <li class="nav-item"><a class="nav-link" href="/logout">Logout</a></li>
                                     <li class="nav-item"><a class="nav-link" href="/tutor_dashboard">My Dashboard</a></li>
                                     <li class="nav-item"><a class="nav-link" href="/request_history">Request History</a></li>
-                                    <li class="nav-item"><a class="nav-link" href="/references">References</a></li>
                                 {% endif %}
                             {% else %}
-                                <li class="nav-item"><a class="nav-link" href="/login">Login</a></li>
-                                <li class="nav-item"><a class="nav-link" href="/register">Register</a></li>
-                                <li class="nav-item"><a class="nav-link" href="/about_us">About Us</a></li>
-                                <li class="nav-item"><a class="nav-link" href="/references">References</a></li>
+                                <li class="nav-item"><a class="nav-link" href="/">Home</a></li>
+                                <li class="nav-item"><a class="nav-link" href="/login">Login/Register</a></li>
+                                <!-- <li class="nav-item"><a class="nav-link" href="/register">Register</a></li> -->
                             {% endif %}
                     </ul>
                 </div>
