@@ -7,18 +7,18 @@
     <!-- Left Side: Login Form -->
     <div class="login-box">
         <h2 class="text-center">Login</h2>
-        <form method="post" class="form-container">
-            {% csrf_token %}
-            {{ form.as_p }}
-            <button type="submit" class="submit-button w-100">Login</button>
-        </form>
-    </div>
+        <div class="form-container">
+            <form method="post">
+                {% csrf_token %}
+                {{ form.as_p }}
+                <button type="submit" class="submit-button w-100">Login</button>
+            </form>
+            <h2 class="text-center">New Here?</h2>
+            <p>Create an account and get started now.</p>
+            <button type="submit" href="/register" class="submit-button">Register</button>
+        </div>
 
-    <!-- Right Side: Registration Section -->
-    <div class="register-box">
-        <h2>New Here?</h2>
-        <p>Create an account and get started now.</p>
-        <a href="/register" class="btn register-btn">Register</a>
     </div>
 </div>
+ 
 {% endblock %}

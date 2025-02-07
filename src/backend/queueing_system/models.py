@@ -5,6 +5,7 @@ class CustomUser(AbstractUser): # here we are extending django's built in abstra
     USER_TYPE_CHOICES = [
         ('student', 'Student'), # Student user type
         ('tutor', 'Tutor'), # Tutor user type
+        ('lecturer', 'Lecturer'),
     ]
     user_type = models.CharField(max_length=10, choices=USER_TYPE_CHOICES) # User type field
 
