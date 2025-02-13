@@ -15,4 +15,5 @@ urlpatterns = [
     path('request_history/', views.request_history, name='request_history'),
     #path('about_us/', views.about_us, name='about_us'),
     path('references/', views.references, name='references'),
+    path('lecturer_dashboard/', views.lecturer_dashboard, name='lecturer_dashboard'),
 ]

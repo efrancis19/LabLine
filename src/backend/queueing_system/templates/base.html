@@ -41,7 +41,7 @@
             transition: background-color 0.3s ease, transform 0.2s ease;
         }
     
-        /* Cancel and Submit Button Styles (Reusable) */
+        
         .cancel-request {
             background-color: rgb(252, 56, 56); /* Red for cancel */
             color: white; /* White text for contrast */
@@ -52,12 +52,12 @@
         }
     
         .submit-button {
-            background-color: #3498db; /* Blue for submit */
+            background-color: #3498db; 
             color: white;
         }
     
         .submit-button:hover {
-            background-color: #2980b9; /* Darker blue on hover */
+            background-color: #2980b9; 
         }
     
         /* Interactive feedback for all buttons */
@@ -230,22 +230,25 @@
                 </button>
                 <div class="collapse navbar-collapse" id="navbarNav">
                     <ul class="navbar-nav">
-                            {% if user.is_authenticated %}
-                                {% if user.user_type == 'student' %}
-                                    <li class="nav-item"><a class="nav-link" href="/">Home</a></li>
-                                    <li class="nav-item"><a class="nav-link" href="/logout">Logout</a></li>
-                                    <li class="nav-item"><a class="nav-link" href="/student_dashboard">My Dashboard</a></li>
-                                {% elif user.user_type == 'tutor' %}
-                                    <li class="nav-item"><a class="nav-link" href="/">Home</a></li>
-                                    <li class="nav-item"><a class="nav-link" href="/logout">Logout</a></li>
-                                    <li class="nav-item"><a class="nav-link" href="/tutor_dashboard">My Dashboard</a></li>
-                                    <li class="nav-item"><a class="nav-link" href="/request_history">Request History</a></li>
-                                {% endif %}
-                            {% else %}
-                                <li class="nav-item"><a class="nav-link" href="/">Home</a></li>
-                                <li class="nav-item"><a class="nav-link" href="/login">Login/Register</a></li>
-                                <!-- <li class="nav-item"><a class="nav-link" href="/register">Register</a></li> -->
-                            {% endif %}
+                        {% if user.is_authenticated %}
+                        {% if user.user_type == 'student' %}
+                            <li class="nav-item"><a class="nav-link" href="/">Home</a></li>
+                            <li class="nav-item"><a class="nav-link" href="/logout">Logout</a></li>
+                            <li class="nav-item"><a class="nav-link" href="/student_dashboard">My Dashboard</a></li>
+                        {% elif user.user_type == 'tutor' %}
+                            <li class="nav-item"><a class="nav-link" href="/">Home</a></li>
+                            <li class="nav-item"><a class="nav-link" href="/logout">Logout</a></li>
+                            <li class="nav-item"><a class="nav-link" href="/tutor_dashboard">My Dashboard</a></li>
+                            <li class="nav-item"><a class="nav-link" href="/request_history">Request History</a></li>
+                        {% elif user.user_type == 'lecturer' %}
+                            <li class="nav-item"><a class="nav-link" href="/">Home</a></li>
+                            <li class="nav-item"><a class="nav-link" href="/logout">Logout</a></li>
+                            <li class="nav-item"><a class="nav-link" href="/lecturer_dashboard">Lecturer Dashboard</a></li>
+                        {% endif %}
+                    {% else %}
+                        <li class="nav-item"><a class="nav-link" href="/">Home</a></li>
+                        <li class="nav-item"><a class="nav-link" href="/login">Login/Register</a></li>
+                    {% endif %}
                     </ul>
                 </div>
             </div>

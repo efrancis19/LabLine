@@ -6,27 +6,33 @@ import json
 # (e.g., request creation, status changes) 
 # are pushed to the relevant users' dashboards in real time.
 
+from channels.generic.websocket import AsyncWebsocketConsumer
+import json
 
-class DashboardConsumer(AsyncWebsocketConsumer): 
+
+class DashboardConsumer(AsyncWebsocketConsumer):
     async def connect(self):
-        # Getting the user ID from the URL or session
         if self.scope["user"].is_anonymous:
             await self.close()
         else:
             self.user_id = self.scope["user"].id
-            self.group_name = f"user_{self.user_id}"
-            
-            # Adding the user to their own group
+            user_type = self.scope["user"].user_type
+
+            if user_type == "tutor":
+                self.group_name = "tutors_group"
+            elif user_type == "lecturer":
+                self.group_name = "lecturers_group"  # New group for lecturers
+            else:
+                self.group_name = f"user_{self.user_id}"
+
             await self.channel_layer.group_add(self.group_name, self.channel_name)
             await self.accept()
 
+
     async def disconnect(self, close_code):
-        # Removing the user from their group
         await self.channel_layer.group_discard(self.group_name, self.channel_name)
 
-    # Receiving messages from group and send to WebSocket
     async def update_dashboard(self, event):
-        # Preparing the message payload
         message = {
             "message": event.get("message"),
             "type": event.get("event_type"),

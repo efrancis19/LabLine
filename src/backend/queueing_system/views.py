@@ -9,6 +9,7 @@ from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 from collections import deque
 
+
 request_queue = deque() # Deque used to store requests sent by students
 assigned_requests = deque()
 
@@ -18,11 +19,18 @@ def home(request):
 
 def register(request):
     if request.method == 'POST': 
-        form = CustomUserCreationForm(request.POST) # Load the form for registering from forms.py
-        if form.is_valid(): # If the user's login input is valid
+        form = CustomUserCreationForm(request.POST)
+        if form.is_valid():
             user = form.save()
             login(request, user)
-            return redirect('student_dashboard' if user.user_type == 'student' else 'tutor_dashboard')
+
+            # Redirect users based on user type
+            if user.user_type == 'student':
+                return redirect('student_dashboard')
+            elif user.user_type == 'tutor':
+                return redirect('tutor_dashboard')
+            elif user.user_type == 'lecturer':
+                return redirect('lecturer_dashboard')  # New dashboard for lecturers
     else:
         form = CustomUserCreationForm()
     return render(request, 'register.html', {'form': form})
@@ -39,19 +47,22 @@ def login_view(request):
         if form.is_valid():
             username = form.cleaned_data.get('username')
             password = form.cleaned_data.get('password')
-            user = authenticate(request, username=username, password=password) # Authenticate and login the user that matches the details entered in the login form
-            if user is not None: # If the details entered match with an existing user
-                login(request, user)  # Logs in the user
+            user = authenticate(request, username=username, password=password)
+            if user is not None:
+                login(request, user)
                 if user.user_type == 'student':
-                    return redirect('student_dashboard')  # Redirect to student dashboard if user is a student
+                    return redirect('student_dashboard')
                 elif user.user_type == 'tutor':
-                    return redirect('tutor_dashboard')  # Redirect to tutor dashboard if user is a tutor
+                    return redirect('tutor_dashboard')
+                elif user.user_type == 'lecturer':
+                    return redirect('lecturer_dashboard')  # New dashboard
     else:
         form = AuthenticationForm()
 
     return render(request, 'login.html', {'form': form})
 
 
+@login_required
 def student_dashboard(request):
     user = request.user
     help_requests = HelpRequest.objects.filter(student=user) # Lists the help requests in HelpRequest where the student field matches that of the logged in user
@@ -69,68 +80,113 @@ def tutor_dashboard(request):
         'pending_requests': pending_requests,
     })
 
+@login_required
+def lecturer_dashboard(request):
+    # Get all logged-in tutors and students
+    tutors = CustomUser.objects.filter(user_type="tutor", is_active=True)
+    students = CustomUser.objects.filter(user_type="student", is_active=True)
+    
+    # Get active requests count
+    active_requests = HelpRequest.objects.filter(status="in_progress").count()
+
+    # Get request history
+    past_requests = HelpRequest.objects.filter(status="completed")
+
+    return render(request, 'lecturer_dashboard.html', {
+        'tutors': tutors,
+        'students': students,
+        'active_requests': active_requests,
+        'past_requests': past_requests,
+    })
+
+
 
 def submit_request(request):
     if request.method == 'POST':
         form = HelpRequestForm(request.POST)
         if form.is_valid():
             help_request = form.save(commit=False)
-            help_request.student = request.user # Associate the request with the logged-in student
+            help_request.student = request.user
             help_request.save()
-            request_queue.append(help_request) # Add the request to the queue
-            print(request_queue)
+            request_queue.append(help_request)
 
-            # Notify tutors about the new request
-            tutors = CustomUser.objects.filter(user_type='tutor')
-            for tutor in tutors:
-                notify_dashboard(
-                    tutor.id,
-                    f"New help request created by {request.user.username}: {help_request.description}",
-                    event_type="new_request",
-                    request_id=help_request.id,
-                    description=help_request.description,
-                    student=request.user.username,
-                )
-            return redirect('student_dashboard')  # Redirect after successful submission
+            # Notify all tutors
+            channel_layer = get_channel_layer()
+            async_to_sync(channel_layer.group_send)(
+                "tutors_group",
+                {
+                    "type": "update_dashboard",
+                    "message": f"New help request from {request.user.username}: {help_request.description}",
+                    "event_type": "new_request",
+                    "request_id": help_request.id,
+                    "description": help_request.description,
+                    "student": request.user.username,
+                }
+            )
+
+            #notify lecturer
+            channel_layer = get_channel_layer()
+            async_to_sync(channel_layer.group_send)(
+                "lecturers_group",
+                {
+                    "type": "update_dashboard",
+                    "message": "A new help request has been submitted.",
+                    "event_type": "new_request",
+                }
+            )
+
+            return redirect('student_dashboard')
     else:
-        form = HelpRequestForm()  # Initialize an empty form for GET requests
-
+        form = HelpRequestForm()
     return render(request, 'submit_request.html', {'form': form})
 
 
 def accept_request(request, pk):
     help_request = get_object_or_404(HelpRequest, pk=pk, status='pending')
     help_request.tutor = request.user
-    if help_request == request_queue[0]:
-        help_request.status = 'in_progress' # Change the status of the request to 'in_progress' to reflect it being accepted by a tutor
-        help_request.save()
-        request_queue.popleft() # Pop the request from the queue since a tutor has accepted it
-        assigned_requests.append(help_request)
-        print(request_queue)
-        print(assigned_requests)
 
-        # Notify student and tutor
+    if help_request == request_queue[0]:
+        help_request.status = 'in_progress'
+        help_request.save()
+        request_queue.popleft()
+        assigned_requests.append(help_request)
+
+        # Notify the student
         notify_dashboard(
-        help_request.student.id,
-        f"Your request '{help_request.description}' has been accepted by {request.user.username}.",
-        event_type="status_update",
-        request_id=help_request.id,
-        new_status="in_progress",
-        student=help_request.student.username,
-        description=help_request.description,
-    )
+            help_request.student.id,
+            f"Your request '{help_request.description}' has been accepted by {request.user.username}.",
+            event_type="status_update",
+            request_id=help_request.id,
+            new_status="in_progress",
+            student=help_request.student.username,
+            description=help_request.description,
+        )
+
+        # Notify the tutor
         notify_dashboard(
-        request.user.id,
-        f"You have accepted the request '{help_request.description}'.",
-        event_type="status_update",
-        request_id=help_request.id,
-        new_status="in_progress",
-        student=help_request.student.username,
-        description=help_request.description,
-    )
-    else:
-        print("This request is not first in the queue!")
-    
+            request.user.id,
+            f"You have accepted the request '{help_request.description}'.",
+            event_type="status_update",
+            request_id=help_request.id,
+            new_status="in_progress",
+            student=help_request.student.username,
+            description=help_request.description,
+        )
+
+    channel_layer = get_channel_layer()
+    async_to_sync(channel_layer.group_send)(
+        "tutors_group",
+        {
+            "type": "update_dashboard",
+            "message": f"The request '{help_request.description}' was accepted by tutor.",
+            "event_type": "status_update",
+            "request_id": help_request.id,
+            "new_status": "in_progress",
+            "student": help_request.student.username,
+            "description": help_request.description,
+        }
+    )        
+
     return redirect('tutor_dashboard')
 
 
@@ -139,56 +195,78 @@ def mark_completed(request, pk):
     help_request.status = 'completed'
     help_request.save()
 
-    # Notify both student and tutor
-    notify_dashboard(help_request.student.id, f"Request {help_request.description} has been completed.",
-                     event_type="status_update", request_id=help_request.id, new_status="completed")
-    notify_dashboard(request.user.id, f"You've marked the request {help_request.description} as completed.",
-                     event_type="status_update", request_id=help_request.id, new_status="completed")
+    # Notify the student
+    notify_dashboard(
+        help_request.student.id,
+        f"Your request '{help_request.description}' has been marked as completed.",
+        event_type="status_update",
+        request_id=help_request.id,
+        new_status="completed",
+        student=help_request.student.username,
+        description=help_request.description,
+    )
+
+    channel_layer = get_channel_layer()
+    async_to_sync(channel_layer.group_send)(
+        "tutors_group",
+        {
+            "type": "update_dashboard",
+            "message": f"The request '{help_request.description}' was marked as completed by tutor.",
+            "event_type": "status_update",
+            "request_id": help_request.id,
+            "new_status": "completed",
+            "student": help_request.student.username,
+            "description": help_request.description,
+        }
+    )
 
     return redirect('tutor_dashboard')
 
 
 
+
+
 def cancel_request(request, pk):
-    # Fetch the help request
     help_request = get_object_or_404(HelpRequest, pk=pk)
 
-    # Check if the user is the student who created the request
     if request.user == help_request.student:
         help_request.status = 'canceled'
         help_request.save()
+
         if help_request in request_queue:
-            request_queue.remove(help_request)  # Remove the request from the queue since it has been cancelled
-            print(request_queue)
+            request_queue.remove(help_request)
         elif help_request in assigned_requests:
             assigned_requests.remove(help_request)
-            print(request_queue)
 
-        # Notify the student (their own cancellation) and their assigned tutor about it.
+        # Notify the student
         notify_dashboard(
             help_request.student.id,
             f"You have canceled the request '{help_request.description}'.",
             event_type="status_update",
             request_id=help_request.id,
             new_status="canceled",
-            student=help_request.student.username,  # Added student username
-            description=help_request.description,  # Added description
+            student=help_request.student.username,
+            description=help_request.description,
         )
 
-        # Notify the tutor (if assigned)
-        if help_request.tutor:
-            notify_dashboard(
-                help_request.tutor.id,
-                f"The request '{help_request.description}' has been canceled by the student.",
-                event_type="status_update",
-                request_id=help_request.id,
-                new_status="canceled",
-                student=help_request.student.username,  # Added student username
-                description=help_request.description,  # Added description
-            )
+        # Notify tutors
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            "tutors_group",
+            {
+                "type": "update_dashboard",
+                "message": f"The request '{help_request.description}' was canceled by the student.",
+                "event_type": "status_update",
+                "request_id": help_request.id,
+                "new_status": "canceled",
+                "student": help_request.student.username,
+                "description": help_request.description,
+            }
+        )
 
-    # Redirect back to the student dashboard after cancellation
     return redirect('student_dashboard')
+
+
 
 
 @login_required
@@ -213,7 +291,7 @@ def notify_dashboard(user_id, message, event_type=None, request_id=None, new_sta
         print("Channel layer is not configured. Cannot send notifications.")
         return
     async_to_sync(channel_layer.group_send)(
-        f"user_{user_id}",
+        f"user_{user_id}", 
         {
             "type": "update_dashboard",  # Matches the method in the consumer
             "message": message,

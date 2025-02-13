@@ -126,14 +126,17 @@ const dashboardSocket = connectWebSocket(
 
             // Check if the request is cancelled
             } else if (newStatus === "canceled") {
+                console.log(`Request ${requestId} was canceled.`);
                 const pendingRequest = document.getElementById(`pending-request-${requestId}`);
                 // If the request status is 'completed'
                 if (pendingRequest) {
+                    console.log(`Removing pending request ${requestId}`);
                     pendingRequest.remove();    // Remove the request from the assigned requests list
                 }
                 // Check if the request is in the assigned requests list
                 const assignedRequest = document.getElementById(`assigned-request-${requestId}`);
                 if (assignedRequest) {
+                    console.log(`Removing assigned request ${requestId}`);
                     assignedRequest.remove();   // Remove from the assigned requests list if applicable
                 }
             } else if (newStatus === "in_progress") {

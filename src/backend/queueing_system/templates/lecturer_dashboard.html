@@ -1,0 +1,37 @@
+{% extends 'base.html' %}
+
+{% block title %}Lecturer Dashboard{% endblock %}
+
+{% block content %}
+
+<div class="container mt-4">
+    <h2 class="text-center mb-4">Welcome, {{ user.username }} ({{ user.user_type }})</h2>
+
+    <div class="section-box mb-4">
+        <h3>Online Tutors</h3>
+        <ul>
+            {% for tutor in tutors %}
+                <li>{{ tutor.username }}</li>
+            {% endfor %}
+        </ul>
+
+        <h3>Online Students</h3>    
+        <ul>
+            {% for student in students %}
+                <li>{{ student.username }}</li>
+            {% endfor %}
+        </ul>
+        
+        <h3>Active Requests: {{ active_requests }}</h3>
+        
+        <h3>Request History</h3>
+        <ul>
+            {% for request in past_requests %}
+                <li>{{ request.student }} - {{ request.description }} ({{ request.status }})</li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>
+
+
+{% endblock %}
