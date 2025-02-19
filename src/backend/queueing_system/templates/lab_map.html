@@ -1,0 +1,115 @@
+{% extends 'base.html' %}
+
+{% block title %}Home{% endblock %}
+
+{% block content %}
+
+<canvas id="labCanvas" width="1000" height="800" style="border: 3px solid black;"></canvas>
+
+<script>
+    const canvas = document.getElementById("labCanvas");
+    const ctx = canvas.getContext("2d");
+    let students = [];
+    let movedStudent = null;
+    let isMoving = false;
+    let offsetX, offsetY;
+
+function fetchAllStudents() {
+    fetch("/api/get_all_students/")
+        .then(response => response.json())
+        .then(data => {
+            console.log('Fetched student data:', data);
+
+            students = data.map((student, index) => {
+                let color;
+                if (student.has_request) {
+                    color = "red";
+                } else if (student.has_assigned_tutor) {
+                    color = "orange";
+                } else {
+                    color = "green";
+                }
+                console.log(`Student ${student.student} (${student.pc_number}) color: ${color}`);
+
+                return {
+                    ...student,
+                    x: 50 + (index % 8) * 100,
+                    y: 50 + Math.floor(index / 8) * 70,
+                };
+            });
+
+            drawStudents();
+        })
+        .catch(error => console.error("Error fetching student data:", error));
+}
+
+function drawStudents() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    students.forEach(student => {
+        if (student.has_request) {
+            ctx.fillStyle = "red";
+        } else if (student.has_assigned_tutor) {
+            ctx.fillStyle = "orange";
+        } else {
+            ctx.fillStyle = "green";
+        }  
+        ctx.fillRect(student.x, student.y, 80, 50);
+
+        ctx.fillStyle = "black";
+        ctx.font = "15px Arial";
+        ctx.fillText(student.pc_number, student.x + 10, student.y + 20);
+        ctx.fillText(student.student, student.x + 10, student.y + 40);
+    });
+}
+
+function getSelectedStudent(mouseX, mouseY) {
+    return students.findIndex(student =>
+        mouseX >= student.x && mouseX <= student.x + 80 &&
+        mouseY >= student.y && mouseY <= student.y + 50
+    );
+}
+
+canvas.addEventListener("mousedown", function (event) {
+    const mouseX = event.offsetX;
+    const mouseY = event.offsetY;
+    movedStudent = getSelectedStudent(mouseX, mouseY);
+
+    if (movedStudent !== -1) {
+        offsetX = mouseX - students[movedStudent].x;
+        offsetY = mouseY - students[movedStudent].y;
+        isMoving = true;
+    }
+});
+
+canvas.addEventListener("mousemove", function (event) {
+    if (isMoving && movedStudent !== -1) {
+        students[movedStudent].x = event.offsetX - offsetX;
+        students[movedStudent].y = event.offsetY - offsetY;
+        drawStudents();
+    }
+});
+
+canvas.addEventListener("mouseup", function () {
+    if (movedStudent !== -1) {
+        const student = students[movedStudent];
+
+        fetch(`/api/update_position/`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ 
+                username: student.student, 
+                x: student.x, 
+                y: student.y 
+            })
+        }).catch(error => console.error("Error updating position:", error));
+    }
+
+    isMoving = false;
+    movedStudent = null;
+});
+
+fetchAllStudents();
+</script>
+
+{% endblock %}

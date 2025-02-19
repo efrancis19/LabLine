@@ -8,6 +8,7 @@ from django.http import JsonResponse
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 from collections import deque
+import json
 
 
 request_queue = deque() # Deque used to store requests sent by students
@@ -160,6 +161,7 @@ def accept_request(request, pk):
             new_status="in_progress",
             student=help_request.student.username,
             description=help_request.description,
+            pc_number=help_request.pc_number
         )
 
         # Notify the tutor
@@ -171,6 +173,7 @@ def accept_request(request, pk):
             new_status="in_progress",
             student=help_request.student.username,
             description=help_request.description,
+            pc_number=help_request.pc_number
         )
 
     channel_layer = get_channel_layer()
@@ -184,11 +187,30 @@ def accept_request(request, pk):
             "new_status": "in_progress",
             "student": help_request.student.username,
             "description": help_request.description,
+            "pc_number": help_request.pc_number
         }
     )        
 
     return redirect('tutor_dashboard')
 
+def get_all_students(request):
+    students = CustomUser.objects.filter(user_type='student')
+    data = []
+    for student in students:
+        has_active_request = HelpRequest.objects.filter(student=student, status="pending").exists()
+        has_assigned_tutor = HelpRequest.objects.filter(student=student, status="in_progress").exists()
+        data.append({
+            "pc_number": student.pc_number,
+            "student": student.username,
+            "has_request": has_active_request,
+            "has_assigned_tutor": has_assigned_tutor,
+        })
+
+    print(data)
+    return JsonResponse(data, safe=False)
+
+def lab_map(request):
+    return render(request, 'lab_map.html')
 
 def mark_completed(request, pk):
     help_request = get_object_or_404(HelpRequest, pk=pk, status='in_progress')
@@ -204,6 +226,7 @@ def mark_completed(request, pk):
         new_status="completed",
         student=help_request.student.username,
         description=help_request.description,
+        pc_number=help_request.pc_number
     )
 
     channel_layer = get_channel_layer()
@@ -217,6 +240,7 @@ def mark_completed(request, pk):
             "new_status": "completed",
             "student": help_request.student.username,
             "description": help_request.description,
+            "pc_number": help_request.pc_number
         }
     )
 
@@ -247,6 +271,7 @@ def cancel_request(request, pk):
             new_status="canceled",
             student=help_request.student.username,
             description=help_request.description,
+            pc_number=help_request.pc_number
         )
 
         # Notify tutors
@@ -261,6 +286,7 @@ def cancel_request(request, pk):
                 "new_status": "canceled",
                 "student": help_request.student.username,
                 "description": help_request.description,
+                "pc_number": help_request.pc_number,
             }
         )
 
@@ -285,7 +311,7 @@ def references(request):
 
 
 # Notify students and tutors on the dashboard about updates
-def notify_dashboard(user_id, message, event_type=None, request_id=None, new_status=None, description=None, student=None):
+def notify_dashboard(user_id, message, event_type=None, request_id=None, new_status=None, description=None, student=None, pc_number=None):
     channel_layer = get_channel_layer()
     if not channel_layer:
         print("Channel layer is not configured. Cannot send notifications.")
@@ -300,5 +326,22 @@ def notify_dashboard(user_id, message, event_type=None, request_id=None, new_sta
             "new_status": new_status,  # New status of the request
             "description": description,  # Description of the request (if applicable)
             "student": student,  # Student username (if applicable)
+            "PC Number": pc_number,
         }
     )
+
+def update_position(request):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body)
+            student = CustomUser.objects.get(username=data["username"])
+
+            student.x_position = data["x"]
+            student.y_position = data["y"]
+            student.save()
+
+            return JsonResponse({"message": "Position updated successfully"}, status=200)
+        except CustomUser.DoesNotExist:
+            return JsonResponse({"error": "Student not found"}, status=404)
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=500)
