@@ -15,3 +15,8 @@ class HelpRequestForm(forms.ModelForm): # Form for submitting a help request to 
     class Meta:
         model = HelpRequest
         fields = ['pc_number', 'description']   # Fields are inherited from the HelpRequest model
+
+class PCNumberForm(forms.ModelForm):
+    class Meta:
+        model = CustomUser
+        fields = ['pc_number']

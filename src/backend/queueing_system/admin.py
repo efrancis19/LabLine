@@ -11,3 +11,4 @@ class UserAdmin(UserAdmin):
     )
 admin.site.register(CustomUser, UserAdmin)
 admin.site.register(HelpRequest)
+admin.site.register(CanvasLayout)

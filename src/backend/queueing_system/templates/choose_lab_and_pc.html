@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+{% block title %}Student Dashboard{% endblock %}
+
+{% block content %}
+  <h2>Enter Your PC Number</h2>
+  <form method="post">
+    {% csrf_token %}
+    
+    <label for="pc_number">PC Number:</label>
+    <input type="text" id="pc_number" name="pc_number" value="{{ form.pc_number.value|default_if_none:'' }}" required>
+    
+    <button type="submit">Save</button>
+  </form>
+{% endblock %}

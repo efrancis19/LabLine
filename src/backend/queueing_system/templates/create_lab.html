@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Canvas Drawing</title>
+    <style>
+        canvas {
+            border: 1px solid black;
+        }
+        .controls {
+            margin: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Lab Layout Creation</h1>
+    <div class="controls">
+        <button id="addPCBtn">Add PC</button>
+        <button id="saveLabBtn">Save Layout</button>
+        <button id="clearCanvasBtn">Clear Lab Canvas</button>
+    </div>
+    <canvas id="newLabCanvas" width="800" height="500"></canvas>
+
+    <script>
+        const canvas = document.getElementById('newLabCanvas');
+        const ctx = canvas.getContext('2d');
+        const addPCBtn = document.getElementById('addPCBtn');   // Button to add a PC to a layout.
+        const saveLabBtn = document.getElementById('saveLabBtn');   // Button to save a layout.
+        const clearCanvasBtn = document.getElementById('clearCanvasBtn');   // Button to clear the canvas.
+
+        const PCs = [];  // Store PCs on the canvas
+        let movedPC = null;   // Variable to detect if a PC is being moved, initialised as null.
+        let offsetX, offsetY;   // Detect the difference between original position of a PC and it's new location after being moved.
+
+        // Retrieve CSRF token
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        } 
+
+        // Function to draw PCs on the canvas
+        function drawLab() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);  // Clear the canvas
+            PCs.forEach(PC => {
+                ctx.fillStyle = 'blue';
+                ctx.fillRect(PC.x, PC.y, PC.size, PC.size);
+            });
+        }
+
+        // Function to add a PC at a random position on the canvas.
+        function addPC(x, y, size) {
+            PCs.push({x, y, size});
+            drawLab();  // Re-draw the PCs already on the canvas after adding a new one.
+        }
+
+        addPCBtn.addEventListener('click', () => {
+            const size = 50;  // Square size of PC
+            const x = Math.random() * (canvas.width - size); // Random position to add a PC
+            const y = Math.random() * (canvas.height - size); // Random position to add a PC
+            addPC(x, y, size);
+        });
+
+        clearCanvasBtn.addEventListener('click', () => {
+            PCs.length = 0;  // Clear the PC array
+            drawLab();  // Re-draw after clearing
+        });
+
+        saveLabBtn.addEventListener('click', () => {
+            fetch('/save_layout/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken'),
+                },
+                body: JSON.stringify({PCs: PCs}),
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Layout saved!');
+                } else {
+                    alert('Error saving layout!');
+                }
+            });
+        });
+
+        canvas.addEventListener('mousedown', (e) => {
+            const mouseX = e.offsetX;
+            const mouseY = e.offsetY;
+
+            // Check if the mouse is hovering over a PC
+            movedPC = null;
+            for (let i = PCs.length - 1; i >= 0; i--) {
+                const PC = PCs[i];
+                if (mouseX >= PC.x && mouseX <= PC.x + PC.size &&
+                    mouseY >= PC.y && mouseY <= PC.y + PC.size) {
+                    movedPC = PC;
+                    offsetX = mouseX - PC.x;
+                    offsetY = mouseY - PC.y;
+                    break;
+                }
+            }
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (movedPC) {
+                // Update the position of the moved PC based on mouse movement
+                const mouseX = e.offsetX;
+                const mouseY = e.offsetY;
+
+                // Move the PC by updating its coordinates
+                movedPC.x = mouseX - offsetX;
+                movedPC.y = mouseY - offsetY;
+
+                drawLab();  // Redraw the canvas with the updated PC position
+            }
+        });
+
+        canvas.addEventListener('mouseup', () => {
+            movedPC = null;  // Release the PC when the user stops clicking and holding down on the mouse.
+        });
+
+        canvas.addEventListener('mouseleave', () => {
+            movedPC = null;  // Release the PC when the mouse drifts outside of the canvas.
+        });
+    </script>
+</body>
+</html>

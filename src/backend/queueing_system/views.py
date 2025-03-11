@@ -1,14 +1,15 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import login, logout, authenticate
 from django.contrib.auth.decorators import login_required
-from .forms import CustomUserCreationForm, HelpRequestForm
-from .models import HelpRequest, CustomUser
+from .forms import CustomUserCreationForm, HelpRequestForm, PCNumberForm
+from .models import HelpRequest, CustomUser, CanvasLayout
 from django.contrib.auth.forms import AuthenticationForm
 from django.http import JsonResponse
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 from collections import deque
 import json
+from django.contrib import messages
 
 
 request_queue = deque() # Deque used to store requests sent by students
@@ -62,6 +63,24 @@ def login_view(request):
 
     return render(request, 'login.html', {'form': form})
 
+def choose_lab_and_pc(request):
+    return render(request, 'choose_lab_and_pc.html')
+
+def choose_lab_and_pc(request):
+    if request.method == "POST":
+        print("POST received")
+        form = PCNumberForm(request.POST)
+        if form.is_valid():
+            pc_number = form.cleaned_data["pc_number"]  # Extract PC number from form
+            request.user.pc_number = pc_number  # Assign to logged-in user
+            request.user.save()  # Save user model
+            print(f"User: {request.user}, Entered PC Number: {pc_number}")
+            messages.success(request, f"Welcome! Your PC number is {pc_number}.")
+            return redirect("student_dashboard")
+    else:
+        form = PCNumberForm()
+
+    return render(request, "choose_lab_and_pc.html", {"form": form})
 
 @login_required
 def student_dashboard(request):
@@ -99,6 +118,45 @@ def lecturer_dashboard(request):
         'active_requests': active_requests,
         'past_requests': past_requests,
     })
+
+def create_lab(request):
+    return render(request, 'create_lab.html')
+
+def save_layout(request):
+    if request.method == 'POST':
+        try:
+            # Get data from the frontend (PC locations)
+            data = json.loads(request.body)
+            PCs = data.get('PCs', [])
+
+            # Assumes the user is authenticated and logged in.
+            user = request.user
+
+            # Save the lab layout to the database
+            layout = CanvasLayout(user=user, layout_data=PCs)
+            layout.save()
+
+            return JsonResponse({'success': True})
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)})
+    return JsonResponse({'success': False, 'error': 'Invalid request'})
+
+def get_saved_canvas(request, layout_id):
+    try:
+        layout = get_object_or_404(CanvasLayout, id=layout_id, user=request.user)
+        return JsonResponse({'success': True, 'layout': layout.layout_data})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+
+def delete_layout(request, layout_id):
+    if request.method == 'POST':
+        try:
+            layout = CanvasLayout.objects.get(id=layout_id, user=request.user)
+            layout.delete()
+            return JsonResponse({'success': True})
+        except CanvasLayout.DoesNotExist:
+            return JsonResponse({'success': False, 'error': 'Lab Layout not found'})
+    return JsonResponse({'success': False, 'error': 'Invalid request'})
 
 
 
@@ -211,6 +269,14 @@ def get_all_students(request):
 
 def lab_map(request):
     return render(request, 'lab_map.html')
+
+def lg25_map(request):
+    users = CustomUser.objects.all()
+    return render(request, 'lg25_map.html', {'users': users})
+
+def pc_data(request):
+    users = CustomUser.objects.all().values("pc_number")
+    return JsonResponse(list(users), safe=False)
 
 def mark_completed(request, pk):
     help_request = get_object_or_404(HelpRequest, pk=pk, status='in_progress')

@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Saved Canvas</title>
+    <style>
+        canvas {
+            border: 1px solid black;
+        }
+    </style>
+</head>
+<body>
+    <h1>Saved Lab</h1>
+    <canvas id="LabCanvas" width="500" height="500"></canvas>
+<button id="loadCanvasBtn">Load Saved Lab</button>
+
+<script>
+    const canvas = document.getElementById('LabCanvas');
+    const loadCanvasBtn = document.getElementById('loadCanvasBtn');
+    const ctx = canvas.getContext('2d');
+
+    function drawSavedPCs(PCs) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear canvas
+        PCs.forEach(PC => {
+            ctx.fillStyle = 'blue';
+            ctx.fillRect(PC.x, PC.y, PC.size, PC.size);
+        });
+    }
+
+        document.getElementById('loadCanvasBtn').addEventListener('click', () => {
+        const layoutId = prompt("Enter lab ID to load:");
+        if (!layoutId) return;
+
+        fetch(`/get_saved_canvas/${layoutId}/`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    drawSavedPCs(data.layout);
+                } else {
+                    alert("Error loading lab: " + data.error);
+                }
+            });
+    });
+</script>
