@@ -28,7 +28,7 @@ def register(request):
 
             # Redirect users based on user type
             if user.user_type == 'student':
-                return redirect('student_dashboard')
+                return redirect('choose_lab_and_pc')
             elif user.user_type == 'tutor':
                 return redirect('tutor_dashboard')
             elif user.user_type == 'lecturer':
@@ -39,6 +39,10 @@ def register(request):
 
 
 def logout_view(request):
+    if request.user.is_authenticated:
+        request.user.pc_number = None
+        request.user.save()
+
     logout(request)
     return redirect('login')  # Redirect to the login page after logout
 
@@ -53,7 +57,7 @@ def login_view(request):
             if user is not None:
                 login(request, user)
                 if user.user_type == 'student':
-                    return redirect('student_dashboard')
+                    return redirect('choose_lab_and_pc')
                 elif user.user_type == 'tutor':
                     return redirect('tutor_dashboard')
                 elif user.user_type == 'lecturer':

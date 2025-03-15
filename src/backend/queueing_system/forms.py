@@ -9,12 +9,12 @@ class CustomUserCreationForm(UserCreationForm): # Form for registering as a new 
 
     class Meta:
         model = CustomUser
-        fields = ['user_type', 'username', 'email', 'password1', 'password2']   # Fields are inherited from the User model
+        fields = ['user_type', 'username', 'password1', 'password2']   # Fields are inherited from the User model
 
 class HelpRequestForm(forms.ModelForm): # Form for submitting a help request to a tutor as a student
     class Meta:
         model = HelpRequest
-        fields = ['pc_number', 'description']   # Fields are inherited from the HelpRequest model
+        fields = ['description']   # Fields are inherited from the HelpRequest model
 
 class PCNumberForm(forms.ModelForm):
     class Meta:
