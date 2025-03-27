@@ -25,14 +25,14 @@
         <h3 class="section-title">Pending Requests</h3>
         <ul id="pending-requests-list">
             {% for request in pending_requests %}
-                {% if forloop.first and assigned_requests|length == 0 %}                  <!-- If the request is first in the queue, add the request details and accept button -->
+                {% if forloop.first and assigned_requests|length == 0 %}
                     <li id="pending-request-{{ request.id }}" class="request-item">
                     <b>{{ forloop.counter }}. {{ request.student.username }}</b> - {{ request.description }}
                     <button class="accept-request" data-request-id="{{ request.id }}">Accept</button>
                 {% elif forloop.first and assigned_requests|length > 0 %}
                     <li id="pending-request-{{ request.id }}" class="request-item">
                     <b>{{ forloop.counter }}. {{ request.student.username }}</b> - {{ request.description }}
-                {% else %}                              <!-- If the request is not first in the queue, add only the request details since it is not yet first in the queue -->
+                {% else %}
                     <li id="pending-request-{{ request.id }}" class="request-item">
                     <b>{{ forloop.counter }}. {{ request.student.username }}</b> - {{ request.description }}
                 {% endif %}
@@ -47,122 +47,129 @@
 function connectWebSocket(url, onMessage) {
     let socket = new WebSocket('ws://' + window.location.host + '/ws/dashboard/');
     socket.onload = function () {
-    const pendingRequestsList = document.getElementById("pending-requests-list");
-    if (pendingRequestsList.children.length === 0) {
-    pendingRequestsList.innerHTML = '';
-    }}
+        const pendingRequestsList = document.getElementById("pending-requests-list");
+        if (pendingRequestsList.children.length === 0) {
+            pendingRequestsList.innerHTML = '';
+        }
+    };
 
-    // 'onopen' event handler for when the WebSocket connection is established
     socket.onopen = function () {
         console.log("WebSocket connected to", url);
     };
 
-    // 'onmessage' event handler for when a message is received from the WebSocket
-    socket.onmessage = onMessage;   // 'onMessage' passed as a parameter
+    socket.onmessage = onMessage;
 
-    // 'onerror' event handler if there is an error with the WebSocket connection
     socket.onerror = function (error) {
-        console.error("WebSocket error:", error);   // Output in the console that there was an error connecting to WebSocket
+        console.error("WebSocket error:", error);
     };
 
-    // 'onclose' event handler, for when the WebSocket connection is closed
     socket.onclose = function () {
         console.error("WebSocket closed unexpectedly. Reconnecting...");
-        // Try to reconnect by calling the connectWebSocket function again after 5 seconds
         setTimeout(function () {
-            connectWebSocket(url, onMessage); // Attempt to reconnect
-        }, 5000); // Retry connection after 5 seconds
+            connectWebSocket(url, onMessage);
+        }, 1000);
     };
 
-    // Return the WebSocket object, allowing the user to interact with the connection
     return socket;
 }
 
 // WebSocket connection for dashboard updates
 const dashboardSocket = connectWebSocket(
-    'ws://' + window.location.host + '/ws/dashboard/',  // WebSocket URL
+    'ws://' + window.location.host + '/ws/dashboard/',
     function (e) {
-        // 'onmessage' handler passed to the WebSocket
-        const data = JSON.parse(e.data);    // Parse incoming message data from the WebSocket
-        console.log("WebSocket message received:", data);   // Log the parsed data
+        const data = JSON.parse(e.data);
+        console.log("WebSocket message received:", data);
 
         // Check if the data type is a new request
         if (data.type === 'new_request') {
-            const pendingRequestsList = document.getElementById("pending-requests-list");   // Get the pending requests list element from the DOM
-            setTimeout(() => {
-                console.log('list length:', pendingRequestsList.children.length);
-            }, 0);
-            const newRequestItem = document.createElement("li");    // Create a new list item element for the notification
-            newRequestItem.id = `pending-request-${data.request_id}`;   // Set the ID of the new list item to include the request ID so it can be identified
-            // Set the inner HTML of the new list item with the student name, request description, and 'Accept' link
+            const pendingRequestsList = document.getElementById("pending-requests-list");
+            const newRequestItem = document.createElement("li");
+
+            // Ensure the request-item class is applied immediately
+            newRequestItem.id = `pending-request-${data.request_id}`;
+            newRequestItem.classList.add("request-item");
+
+            // Set the innerHTML outside of the if statement
+            newRequestItem.innerHTML = `
+                ${data.student} - ${data.description}
+            `;
+
+            // Ensure the first item gets the Accept button
             if (pendingRequestsList.children.length === 0) {
-                newRequestItem.innerHTML = `
-                ${data.student} - ${data.description}
-                <a class="accept-request" data-request-id="${data.request_id}">Accept</a>
-            `;
+                const acceptButton = document.createElement("button");
+                acceptButton.classList.add("accept-request");
+                acceptButton.setAttribute("data-request-id", data.request_id);
+                acceptButton.textContent = "Accept";
+                newRequestItem.appendChild(acceptButton);
             }
-            else if (pendingRequestsList.children.length > 0) {
-                newRequestItem.innerHTML = `
-                ${data.student} - ${data.description}
-            `;
-            }
-            pendingRequestsList.appendChild(newRequestItem);    // Append the new request item to the pending requests list
+        
+            pendingRequestsList.appendChild(newRequestItem);
+        
+            // Force CSS reflow to ensure styles apply
+            pendingRequestsList.style.display = "none";
             setTimeout(() => {
-                console.log('list length:', pendingRequestsList.children.length);
-                console.log('list:', pendingRequestsList);
-            }, 0);
-            console.log(pendingRequestsList.children.length)
+                pendingRequestsList.style.display = "block";
+            }, 50);
+        }
 
 
         // If the data type is 'status_update', handle the status update of a request
-        } else if (data.type === 'status_update') {
-            const requestId = data.request_id;  // Get the request ID
-            const newStatus = data.new_status;  // Get the new status of the request
-        
+        else if (data.type === 'status_update') {
+            const requestId = data.request_id;
+            const newStatus = data.new_status;
+
             // Remove from assigned requests if completed
             if (newStatus === "completed") {
                 const assignedRequest = document.getElementById(`assigned-request-${requestId}`);
-                if (assignedRequest) assignedRequest.remove();  // Remove the request from the DOM
+                if (assignedRequest) assignedRequest.remove();
 
-            // Check if the request is cancelled
-            } else if (newStatus === "canceled") {
+                // Update the next pending request to show the "Accept" button
+                const pendingRequestsList = document.getElementById("pending-requests-list");
+                if (pendingRequestsList.children.length > 0) {
+                    const firstItem = pendingRequestsList.children[0];
+                    if (!firstItem.querySelector(".accept-request")) {
+                        const firstRequestId = firstItem.id.replace("pending-request-", "");
+                        const acceptButton = document.createElement("button");
+                        acceptButton.classList.add("accept-request");
+                        acceptButton.setAttribute("data-request-id", firstRequestId);
+                        acceptButton.textContent = "Accept";
+                        firstItem.appendChild(acceptButton);
+                    }
+                }
+            }
+
+            else if (newStatus === "canceled") {
                 console.log(`Request ${requestId} was canceled.`);
                 const pendingRequest = document.getElementById(`pending-request-${requestId}`);
-                // If the request status is 'completed'
-                if (pendingRequest) {
-                    console.log(`Removing pending request ${requestId}`);
-                    pendingRequest.remove();    // Remove the request from the assigned requests list
-                }
-                // Check if the request is in the assigned requests list
+                if (pendingRequest) pendingRequest.remove();
                 const assignedRequest = document.getElementById(`assigned-request-${requestId}`);
-                if (assignedRequest) {
-                    console.log(`Removing assigned request ${requestId}`);
-                    assignedRequest.remove();   // Remove from the assigned requests list if applicable
-                }
-            } else if (newStatus === "in_progress") {
-                // Remove from pending requests list if accepted
+                if (assignedRequest) assignedRequest.remove();
+            } 
+
+            else if (newStatus === "in_progress") {
                 const pendingRequest = document.getElementById(`pending-request-${requestId}`);
-                if (pendingRequest) {
-                    pendingRequest.remove();    // Remove from pending list
-                }
+                if (pendingRequest) pendingRequest.remove();
+
                 const pendingRequestsList = document.getElementById("pending-requests-list");
-                const firstItem = pendingRequestsList.children[0];
-                pendingRequestsList[0] = `
-                ${data.student} - ${data.description}
-                <a class="accept-request" data-request-id="${data.request_id}">Accept</a>
-                `;
-                console.log(pendingRequestsList[0])
-                console.log(pendingRequestsList.children.length)
-            
-                const assignedRequestsList = document.getElementById("assigned-requests-list"); // Add to assigned requests
-                const newAssignedItem = document.createElement("li");   // Create a new list item for the assigned request
-                newAssignedItem.id = `assigned-request-${requestId}`;   // Set the ID of the new list item to include the request ID so it can be identified
-                // Set the inner HTML of the new assigned request list item with student name, request description, and the 'Mark as Completed' link
+                if (pendingRequestsList.children.length > 0) {
+                    const firstItem = pendingRequestsList.children[0];
+                    if (!firstItem.querySelector(".accept-request")) {
+                        const firstRequestId = firstItem.id.replace("pending-request-", "");
+                        const acceptButton = document.createElement("button");
+                        acceptButton.classList.add("accept-request");
+                        acceptButton.setAttribute("data-request-id", firstRequestId);
+                        acceptButton.textContent = "Accept";
+                        firstItem.appendChild(acceptButton);
+                    }
+                }
+
+                const assignedRequestsList = document.getElementById("assigned-requests-list");
+                const newAssignedItem = document.createElement("li");
+                newAssignedItem.id = `assigned-request-${requestId}`;
                 newAssignedItem.innerHTML = `
                     ${data.student} - ${data.description}
-                    <a class="mark-completed" data-request-id="${requestId}">Mark as Completed</a>
+                    <button class="mark-completed" data-request-id="${requestId}">Mark as Completed</button>
                 `;
-                // Append the new assigned request item to the assigned requests list
                 assignedRequestsList.appendChild(newAssignedItem);
             }
         }
@@ -173,33 +180,22 @@ const dashboardSocket = connectWebSocket(
 document.addEventListener("click", function (event) {
     const target = event.target;
 
-    // Check if the clicked target has the class 'accept-request'
     if (target.classList.contains("accept-request")) {
-        const requestId = target.getAttribute("data-request-id");   // If the target has the 'accept-request' class, get the request ID associated with this target element
-        fetch(`/accept_request/${requestId}/`, { method: "POST", headers: { "X-CSRFToken": "{{ csrf_token }}" } })  // Use fetch to send a POST request to accept the request on the WebSocket server. POST is used since an action is performed (accepting a request). A CSRF token is included for security
-            // Handle the response after the fetch call
+        const requestId = target.getAttribute("data-request-id");
+        fetch(`/accept_request/${requestId}/`, { method: "POST", headers: { "X-CSRFToken": "{{ csrf_token }}" } })
             .then((response) => {
-                // Check if the response was successful (status 200-299)
-                if (response.ok) {
-                    console.log("Request accepted successfully.");  // Output a success message to the console
-                }
+                if (response.ok) console.log("Request accepted successfully.");
             });
     }
 
-    // Check if the clicked target has the class 'mark-completed'
     if (target.classList.contains("mark-completed")) {
-        const requestId = target.getAttribute("data-request-id");   // If the target has the 'mark-completed' class, get the request ID associated with this target element
-        fetch(`/mark_completed/${requestId}/`, { method: "POST", headers: { "X-CSRFToken": "{{ csrf_token }}" } })  // Use fetch to send a POST request to accept the request on the WebSocket server. POST is used since an action is performed (marking a request as completed). A CSRF token is included for security
-            // Handle the response after the fetch call
+        const requestId = target.getAttribute("data-request-id");
+        fetch(`/mark_completed/${requestId}/`, { method: "POST", headers: { "X-CSRFToken": "{{ csrf_token }}" } })
             .then((response) => {
-                // Check if the response was successful (status 200-299)
-                if (response.ok) {
-                    console.log("Request marked as completed successfully.");   // Output a success message to the console
-                }
+                if (response.ok) console.log("Request marked as completed successfully.");
             });
     }
 });
-
 </script>
 
 {% endblock %}

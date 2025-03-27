@@ -2,14 +2,6 @@ from channels.generic.websocket import AsyncWebsocketConsumer
 import json
 
 
-#This consumer ensures that updates 
-# (e.g., request creation, status changes) 
-# are pushed to the relevant users' dashboards in real time.
-
-from channels.generic.websocket import AsyncWebsocketConsumer
-import json
-
-
 class DashboardConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         if self.scope["user"].is_anonymous:
@@ -18,19 +10,22 @@ class DashboardConsumer(AsyncWebsocketConsumer):
             self.user_id = self.scope["user"].id
             user_type = self.scope["user"].user_type
 
+            # Ensure that group_name is properly assigned
             if user_type == "tutor":
                 self.group_name = "tutors_group"
             elif user_type == "lecturer":
                 self.group_name = "lecturers_group"  # New group for lecturers
             else:
+                # Default to user-specific group if not a tutor or lecturer
                 self.group_name = f"user_{self.user_id}"
 
             await self.channel_layer.group_add(self.group_name, self.channel_name)
             await self.accept()
 
-
     async def disconnect(self, close_code):
-        await self.channel_layer.group_discard(self.group_name, self.channel_name)
+        # Ensure that group_name is available before trying to remove from group
+        if hasattr(self, 'group_name'):
+            await self.channel_layer.group_discard(self.group_name, self.channel_name)
 
     async def update_dashboard(self, event):
         message = {
