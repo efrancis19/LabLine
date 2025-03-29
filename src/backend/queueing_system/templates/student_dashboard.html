@@ -17,7 +17,7 @@
                 {% if request.status == "pending" %}
                 <button class="cancel-request" data-request-id="{{ request.id }}">Cancel</button>
                 {% elif request.status == "in_progress" %}
-                <button class="mark-completed" data-request-id="{{ request.id }}">Mark Completed</button>
+                <button class="cancel-request" data-request-id="{{ request.id }}">Cancel</button>
                 {% endif %}
             </li>
             {% endfor %}
