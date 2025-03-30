@@ -86,11 +86,26 @@ def choose_lab_and_pc(request):
 
     return render(request, "choose_lab_and_pc.html", {"form": form})
 
+
 @login_required
 def student_dashboard(request):
     user = request.user
-    help_requests = HelpRequest.objects.filter(student=user) # Lists the help requests in HelpRequest where the student field matches that of the logged in user
+    help_requests = HelpRequest.objects.filter(student=user)
+
+    # Fetch global queue to calculate positions
+    queue = list(
+        HelpRequest.objects.filter(status__in=["pending", "in_progress"]).order_by("created_at")
+    )
+    request_positions = {
+        req.id: idx + 1 for idx, req in enumerate(queue)
+    }
+
+    # Add .queue_position to each help_request manually
+    for req in help_requests:
+        req.queue_position = request_positions.get(req.id)
+
     return render(request, 'student_dashboard.html', {'help_requests': help_requests})
+
 
 
 @login_required
@@ -196,6 +211,18 @@ def submit_request(request):
                     "message": "A new help request has been submitted.",
                     "event_type": "new_request",
                 }
+            )
+
+            # Notify the student with status update and queue position
+            notify_dashboard(
+                user_id=help_request.student.id,
+                message=f"Your request '{help_request.description}' has been received.",
+                event_type="status_update",
+                request_id=help_request.id,
+                new_status="pending",
+                description=help_request.description,
+                student=help_request.student.username,
+                pc_number=help_request.pc_number
             )
 
             return redirect('student_dashboard')
@@ -323,6 +350,8 @@ def mark_completed(request, pk):
             }
         )
 
+        broadcast_queue_positions()
+
     return redirect('tutor_dashboard')
 
 
@@ -367,6 +396,8 @@ def cancel_request(request, pk):
             }
         )
 
+        broadcast_queue_positions()
+
     return redirect('student_dashboard')
 
 
@@ -387,19 +418,46 @@ def notify_dashboard(user_id, message, event_type=None, request_id=None, new_sta
     if not channel_layer:
         print("Channel layer is not configured. Cannot send notifications.")
         return
+
+    # Determine the queue position if the request is still active (pending or in_progress)
+    queue_position = None
+    if new_status in ["pending", "in_progress"] and request_id:
+        pending_requests = HelpRequest.objects.filter(status__in=["pending", "in_progress"]).order_by('created_at')
+        for idx, req in enumerate(pending_requests):
+            if req.id == request_id:
+                queue_position = idx + 1  # 1-based index
+                break
+
     async_to_sync(channel_layer.group_send)(
-        f"user_{user_id}", 
+        f"user_{user_id}",
         {
-            "type": "update_dashboard",  # Matches the method in the consumer
+            "type": "update_dashboard",
             "message": message,
-            "event_type": event_type,  # Event type like 'new_request' or 'status_update'
-            "request_id": request_id,  # ID of the request being updated
-            "new_status": new_status,  # New status of the request
-            "description": description,  # Description of the request (if applicable)
-            "student": student,  # Student username (if applicable)
+            "event_type": event_type,
+            "request_id": request_id,
+            "new_status": new_status,
+            "description": description,
+            "student": student,
             "PC Number": pc_number,
+            "queue_position": queue_position,  # <-- send position
         }
     )
+
+
+def broadcast_queue_positions():
+    queue = HelpRequest.objects.filter(status__in=["pending", "in_progress"]).order_by("created_at")
+    for idx, req in enumerate(queue):
+        notify_dashboard(
+            user_id=req.student.id,
+            message=f"Your queue position has been updated.",
+            event_type="status_update",
+            request_id=req.id,
+            new_status=req.status,
+            description=req.description,
+            student=req.student.username,
+            pc_number=req.pc_number,
+        )
+
 
 def update_position(request):
     if request.method == "POST":

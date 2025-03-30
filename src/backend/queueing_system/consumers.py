@@ -35,5 +35,6 @@ class DashboardConsumer(AsyncWebsocketConsumer):
             "new_status": event.get("new_status"),
             "description": event.get("description"),
             "student": event.get("student"),
+            "queue_position": event.get("queue_position"),  # <-- new field
         }
         await self.send(text_data=json.dumps(message))

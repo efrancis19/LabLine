@@ -13,15 +13,21 @@
         <ul id="help-requests-list">
             {% for request in help_requests %}
             <li id="request-{{ request.id }}" class="request-item">
-                {{ request.description }} - Status: <b><span class="status">{{ request.status }}</span></b>
+                {{ request.description }} -
+                Status: <b><span class="status">{{ request.status }}</span></b>
+                <span class="queue-position">
+                    {% if request.status in "pending,in_progress" and request.queue_position %}
+                        (Position in queue: {{ request.queue_position }})
+                    {% endif %}
+                </span>                
                 {% if request.status == "pending" %}
-                <button class="cancel-request" data-request-id="{{ request.id }}">Cancel</button>
+                    <button class="cancel-request" data-request-id="{{ request.id }}">Cancel</button>
                 {% elif request.status == "in_progress" %}
-                <button class="cancel-request" data-request-id="{{ request.id }}">Cancel</button>
+                    <button class="cancel-request" data-request-id="{{ request.id }}">Cancel</button>
                 {% endif %}
             </li>
             {% endfor %}
-        </ul>
+        </ul>        
     </div>
 
     <div class="section-box">
@@ -85,22 +91,36 @@
 
             // Check if the data is related to 'status_update'
             if (data.type === 'status_update') {
-                // Extract the request ID and the new status from the data
                 const requestId = data.request_id;
                 const newStatus = data.new_status;
-
-                // Update the status in the DOM
-                
-                const requestElement = document.getElementById(`request-${requestId}`); // Get the request element by its ID (request-${requestId})
-                // If the request element exists in the DOM
+                const position = data.queue_position;
+                        
+                const requestElement = document.getElementById(`request-${requestId}`);
                 if (requestElement) {
-                    const statusElement = requestElement.querySelector(".status");  // Get the status element within this request
-                    statusElement.textContent = newStatus;  // Update the text content of the status element with the new status
-
-                    // remove buttons for completed requests
-                    if (newStatus === "completed" || newStatus === "canceled") {
-                        const buttons = requestElement.querySelectorAll("button");  // Get all button elements within the request element
-                        buttons.forEach(button => button.remove()); // Loop through every button and remove each one from the DOM
+                    const statusElement = requestElement.querySelector(".status");
+                    if (statusElement) {
+                        statusElement.textContent = newStatus;
+                    }
+                
+                    const positionElement = requestElement.querySelector(".queue-position");
+                
+                    if (newStatus === "pending" || newStatus === "in_progress") {
+                        if (positionElement) {
+                            if (position !== undefined && position !== null) {
+                                positionElement.textContent = ` (Position in queue: ${position})`;
+                            } else {
+                                positionElement.textContent = "";
+                            }
+                        }
+                    } else {
+                        // Remove queue position if canceled or completed
+                        if (positionElement) {
+                            positionElement.textContent = "";
+                        }
+                    
+                        // Also remove action buttons
+                        const buttons = requestElement.querySelectorAll("button");
+                        buttons.forEach(button => button.remove());
                     }
                 }
             }
