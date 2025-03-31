@@ -25,20 +25,14 @@
         <h3 class="section-title">Pending Requests</h3>
         <ul id="pending-requests-list">
             {% for request in pending_requests %}
-                {% if forloop.first and assigned_requests|length == 0 %}
-                    <li id="pending-request-{{ request.id }}" class="request-item">
+                <li id="pending-request-{{ request.id }}" class="request-item">
                     <b>{{ forloop.counter }}. {{ request.student.username }}</b> - {{ request.description }}
-                    <button class="accept-request" data-request-id="{{ request.id }}">Accept</button>
-                {% elif forloop.first and assigned_requests|length > 0 %}
-                    <li id="pending-request-{{ request.id }}" class="request-item">
-                    <b>{{ forloop.counter }}. {{ request.student.username }}</b> - {{ request.description }}
-                {% else %}
-                    <li id="pending-request-{{ request.id }}" class="request-item">
-                    <b>{{ forloop.counter }}. {{ request.student.username }}</b> - {{ request.description }}
-                {% endif %}
-            </li>
-            </ul>
+                    {% if forloop.first and assigned_requests|length == 0 %}
+                        <button class="accept-request" data-request-id="{{ request.id }}">Accept</button>
+                    {% endif %}
+                </li>
             {% endfor %}
+            </ul>
     </div>
 </div>
 
@@ -73,6 +67,25 @@ function connectWebSocket(url, onMessage) {
     return socket;
 }
 
+function refreshAcceptButton() {
+    const pendingRequestsList = document.getElementById("pending-requests-list");
+    
+    // Remove any existing Accept buttons
+    pendingRequestsList.querySelectorAll(".accept-request").forEach(btn => btn.remove());
+
+    // Only add Accept button if there are no assigned requests
+    const assignedCount = document.getElementById("assigned-requests-list").children.length;
+    if (assignedCount === 0 && pendingRequestsList.children.length > 0) {
+        const firstItem = pendingRequestsList.children[0];
+        const firstRequestId = firstItem.id.replace("pending-request-", "");
+        const acceptButton = document.createElement("button");
+        acceptButton.classList.add("accept-request");
+        acceptButton.setAttribute("data-request-id", firstRequestId);
+        acceptButton.textContent = "Accept";
+        firstItem.appendChild(acceptButton);
+    }
+}
+
 // WebSocket connection for dashboard updates
 const dashboardSocket = connectWebSocket(
     'ws://' + window.location.host + '/ws/dashboard/',
@@ -104,6 +117,7 @@ const dashboardSocket = connectWebSocket(
             }
         
             pendingRequestsList.appendChild(newRequestItem);
+            refreshAcceptButton();
         
             // Force CSS reflow to ensure styles apply
             pendingRequestsList.style.display = "none";
@@ -123,19 +137,7 @@ const dashboardSocket = connectWebSocket(
                 const assignedRequest = document.getElementById(`assigned-request-${requestId}`);
                 if (assignedRequest) assignedRequest.remove();
 
-                // Update the next pending request to show the "Accept" button
-                const pendingRequestsList = document.getElementById("pending-requests-list");
-                if (pendingRequestsList.children.length > 0) {
-                    const firstItem = pendingRequestsList.children[0];
-                    if (!firstItem.querySelector(".accept-request")) {
-                        const firstRequestId = firstItem.id.replace("pending-request-", "");
-                        const acceptButton = document.createElement("button");
-                        acceptButton.classList.add("accept-request");
-                        acceptButton.setAttribute("data-request-id", firstRequestId);
-                        acceptButton.textContent = "Accept";
-                        firstItem.appendChild(acceptButton);
-                    }
-                }
+                refreshAcceptButton();
             }
 
             else if (newStatus === "canceled") {
@@ -150,19 +152,6 @@ const dashboardSocket = connectWebSocket(
                 const pendingRequest = document.getElementById(`pending-request-${requestId}`);
                 if (pendingRequest) pendingRequest.remove();
 
-                const pendingRequestsList = document.getElementById("pending-requests-list");
-                if (pendingRequestsList.children.length > 0) {
-                    const firstItem = pendingRequestsList.children[0];
-                    if (!firstItem.querySelector(".accept-request")) {
-                        const firstRequestId = firstItem.id.replace("pending-request-", "");
-                        const acceptButton = document.createElement("button");
-                        acceptButton.classList.add("accept-request");
-                        acceptButton.setAttribute("data-request-id", firstRequestId);
-                        acceptButton.textContent = "Accept";
-                        firstItem.appendChild(acceptButton);
-                    }
-                }
-
                 const assignedRequestsList = document.getElementById("assigned-requests-list");
                 const newAssignedItem = document.createElement("li");
                 newAssignedItem.id = `assigned-request-${requestId}`;
@@ -171,7 +160,10 @@ const dashboardSocket = connectWebSocket(
                     <button class="mark-completed" data-request-id="${requestId}">Mark as Completed</button>
                 `;
                 assignedRequestsList.appendChild(newAssignedItem);
-            }
+
+                // 🔁 Refresh Accept button for next request in queue
+                refreshAcceptButton();
+            }           
         }
     }
 );
