@@ -9,6 +9,7 @@ class CustomUser(AbstractUser): # here we are extending django's built in abstra
     ]
     user_type = models.CharField(max_length=10, choices=USER_TYPE_CHOICES) # User type field
     pc_number = models.IntegerField(null=True)
+    lab_id = models.CharField(max_length=10, default="")
 
 class HelpRequest(models.Model):
     STATUS_CHOICES = [

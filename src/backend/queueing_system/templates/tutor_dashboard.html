@@ -12,7 +12,7 @@
         <ul id="assigned-requests-list">
             {% for request in assigned_requests %}
             <li id="assigned-request-{{ request.id }}" class="request-item">
-                <b>{{ request.student.username }}</b> - {{ request.description }}
+                <b>{{ request.student.username }}</b> - {{ request.description }} - Lab ID: {{ request.student.lab_id }} - PC Number: {{ request.student.pc_number }}
                 <button class="mark-completed" data-request-id="{{ request.id }}">Mark as Completed</button>
             </li>
             {% empty %}
@@ -26,7 +26,7 @@
         <ul id="pending-requests-list">
             {% for request in pending_requests %}
                 <li id="pending-request-{{ request.id }}" class="request-item">
-                    <b>{{ forloop.counter }}. {{ request.student.username }}</b> - {{ request.description }}
+                    <b>{{ forloop.counter }}. {{ request.student.username }}</b> - {{ request.description }} - Lab ID: {{ request.student.lab_id }} - PC Number: {{ request.student.pc_number }}
                     {% if forloop.first and assigned_requests|length == 0 %}
                         <button class="accept-request" data-request-id="{{ request.id }}">Accept</button>
                     {% endif %}

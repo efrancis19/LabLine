@@ -75,9 +75,11 @@ def choose_lab_and_pc(request):
         form = PCNumberForm(request.POST)
         if form.is_valid():
             pc_number = form.cleaned_data["pc_number"]  # Extract PC number from form
+            lab_id = form.cleaned_data["lab_id"]
             request.user.pc_number = pc_number  # Assign to logged-in user
+            request.user.lab_id = lab_id
             request.user.save()  # Save user model
-            print(f"User: {request.user}, Entered PC Number: {pc_number}")
+            print(f"User: {request.user}, Entered PC Number: {pc_number} and Lab ID: {lab_id}")
             messages.success(request, f"Welcome! Your PC number is {pc_number}.")
             return redirect("student_dashboard")
     else:

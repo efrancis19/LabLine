@@ -9,6 +9,9 @@
     
     <label for="pc_number">PC Number:</label>
     <input type="text" id="pc_number" name="pc_number" value="{{ form.pc_number.value|default_if_none:'' }}" required>
+
+    <label for="lab_id">Lab ID:</label>
+    <input type="text" id="lab_id" name="lab_id" value="{{ form.lab_id.value|default_if_none:'' }}" required>
     
     <button type="submit">Save</button>
   </form>

@@ -19,4 +19,4 @@ class HelpRequestForm(forms.ModelForm): # Form for submitting a help request to 
 class PCNumberForm(forms.ModelForm):
     class Meta:
         model = CustomUser
-        fields = ['pc_number']
+        fields = ['pc_number', 'lab_id']
