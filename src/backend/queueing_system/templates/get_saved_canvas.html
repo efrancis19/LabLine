@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Saved Canvas</title>
+    <title>Saved Lab</title>
     <style>
         canvas {
             border: 1px solid black;
@@ -11,35 +11,79 @@
     </style>
 </head>
 <body>
-    <h1>Saved Lab</h1>
-    <canvas id="LabCanvas" width="500" height="500"></canvas>
-<button id="loadCanvasBtn">Load Saved Lab</button>
+    <h1>Saved Lab Layout</h1>
+    <pre>Raw layoutData: {{ layout_data|safe }}</pre>
+    <canvas id="myLab" width="500" height="500"></canvas>
 
-<script>
-    const canvas = document.getElementById('LabCanvas');
-    const loadCanvasBtn = document.getElementById('loadCanvasBtn');
-    const ctx = canvas.getContext('2d');
+    <script type="application/json" id="layoutData">
+        {{ layout_data|safe }}
+    </script>
 
-    function drawSavedPCs(PCs) {
-        ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear canvas
-        PCs.forEach(PC => {
-            ctx.fillStyle = 'blue';
-            ctx.fillRect(PC.x, PC.y, PC.size, PC.size);
-        });
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            console.log("JavaScript Loaded Successfully!");
+
+            // Retrieve the layout data from the script tag.
+            const layoutDataElement = document.getElementById('layoutData');
+            if (!layoutDataElement) {
+                console.error("Error: layout_data script tag not found!");
+                return;
+            }
+
+            const layoutDataText = layoutDataElement.textContent.trim();
+            console.log("Raw layout data from the script tag:", layoutDataText);
+
+            let layoutData = [];
+            
+            try {
+                console.log("Parsing layoutData:", layoutDataText);
+                layoutData = JSON.parse(layoutDataText);
+                console.log("Parsed layoutData:", layoutData);
+            } catch (error) {
+                console.error("Error parsing layout data:", error);
+                console.error("Raw data causing error:", layoutDataText);
+                return;
+            }
+
+            if (!Array.isArray(layoutData) || layoutData.length === 0) {
+        console.error("Invalid layoutData: Not an array or empty");
+    } else {
+        console.log("Valid lab layout received:", layoutData);
     }
 
-        document.getElementById('loadCanvasBtn').addEventListener('click', () => {
-        const layoutId = prompt("Enter lab ID to load:");
-        if (!layoutId) return;
+            // Canvas setup.
+            const canvas = document.getElementById('myLab');
+            if (!canvas) {
+                console.error("Error: Lab not found!");
+                return;
+            }
 
-        fetch(`/get_saved_canvas/${layoutId}/`)
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    drawSavedPCs(data.layout);
+            const ctx = canvas.getContext('2d');
+
+            // Function to draw the layout on the canvas.
+            function drawLab() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                if (Array.isArray(layoutData)) {
+                    console.log("Valid lab layout received:", layoutData);
+                    layoutData.forEach(PC => {
+                        if (typeof PC.x === 'number' && typeof PC.y === 'number' && typeof PC.size === 'number') {
+                            ctx.fillStyle = 'blue';
+                            ctx.fillRect(PC.x, PC.y, PC.size, PC.size);
+
+                            ctx.fillStyle = 'white';
+                            ctx.font = '14px Arial';
+                            ctx.fillText(PC.id, PC.x + 15, PC.y + 30);
+                        } else {
+                            console.error("Invalid PC data:", PC);
+                        }
+                    });
                 } else {
-                    alert("Error loading lab: " + data.error);
+                    console.error("Invalid layoutData: Not an array or empty");
                 }
-            });
-    });
-</script>
+            }
+
+            // Call the drawLab function to draw the layout.
+            drawLab();
+        });
+    </script>

@@ -145,15 +145,19 @@ def create_lab(request):
 def save_layout(request):
     if request.method == 'POST':
         try:
-            # Get data from the frontend (PC locations)
+            # Get data from the frontend
             data = json.loads(request.body)
             PCs = data.get('PCs', [])
 
-            # Assumes the user is authenticated and logged in.
+            for i, PC in enumerate(PCs):
+                if 'id' not in PC:
+                    PC['id'] = i + 1
+
+            # The user is authenticated and logged in.
             user = request.user
 
             # Save the lab layout to the database
-            layout = CanvasLayout(user=user, layout_data=PCs)
+            layout = CanvasLayout(user=user, layout_data=json.dumps(PCs))
             layout.save()
 
             return JsonResponse({'success': True})
@@ -161,16 +165,29 @@ def save_layout(request):
             return JsonResponse({'success': False, 'error': str(e)})
     return JsonResponse({'success': False, 'error': 'Invalid request'})
 
+
 def get_saved_canvas(request, layout_id):
-    try:
-        layout = get_object_or_404(CanvasLayout, id=layout_id, user=request.user)
-        return JsonResponse({'success': True, 'layout': layout.layout_data})
-    except Exception as e:
-        return JsonResponse({'success': False, 'error': str(e)})
+    layout = get_object_or_404(CanvasLayout, id=layout_id)
+
+    if isinstance(layout.layout_data, str):
+        try:
+            layout_data = json.loads(layout.layout_data) if isinstance(layout.layout_data, str) else layout.layout_data
+        except json.JSONDecodeError:
+            layout_data = []
+    else:
+        layout_data = layout.layout_data
+
+    print("Raw layout_data from DB:", layout_data)
+
+    return render(request, 'get_saved_canvas.html', {
+        'layout_data': json.dumps(layout_data)
+    })
+
 
 def delete_layout(request, layout_id):
     if request.method == 'POST':
         try:
+            # Get the lab layout associated with the layout id.
             layout = CanvasLayout.objects.get(id=layout_id, user=request.user)
             layout.delete()
             return JsonResponse({'success': True})

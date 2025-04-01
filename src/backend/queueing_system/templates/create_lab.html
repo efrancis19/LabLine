@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Canvas Drawing</title>
+    <title>Lab Drawing</title>
     <style>
         canvas {
             border: 1px solid black;
@@ -30,6 +30,7 @@
         const clearCanvasBtn = document.getElementById('clearCanvasBtn');   // Button to clear the canvas.
 
         const PCs = [];  // Store PCs on the canvas
+        let PC_ID = 1;  // Initialise the ID of the first PC to 1
         let movedPC = null;   // Variable to detect if a PC is being moved, initialised as null.
         let offsetX, offsetY;   // Detect the difference between original position of a PC and it's new location after being moved.
 
@@ -55,24 +56,33 @@
             PCs.forEach(PC => {
                 ctx.fillStyle = 'blue';
                 ctx.fillRect(PC.x, PC.y, PC.size, PC.size);
+
+                ctx.fillStyle = 'white';
+                ctx.font = '16px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(PC.id, PC.x + PC.size / 2, PC.y + PC.size / 2);
             });
         }
 
         // Function to add a PC at a random position on the canvas.
         function addPC(x, y, size) {
-            PCs.push({x, y, size});
+            const newPC = { id: PC_ID, x, y, size };
+            PCs.push(newPC); // Add a new PC to the PC array.
+            PC_ID++; // Increment the PC ID each time a new PC is added to the canvas.
             drawLab();  // Re-draw the PCs already on the canvas after adding a new one.
         }
 
         addPCBtn.addEventListener('click', () => {
             const size = 50;  // Square size of PC
-            const x = Math.random() * (canvas.width - size); // Random position to add a PC
-            const y = Math.random() * (canvas.height - size); // Random position to add a PC
+            const x = Math.random() * (canvas.width - size); // Random x-coordinate to add a PC.
+            const y = Math.random() * (canvas.height - size); // Random y-coordinate to add a PC.
             addPC(x, y, size);
         });
 
         clearCanvasBtn.addEventListener('click', () => {
             PCs.length = 0;  // Clear the PC array
+            PC_ID = 1;  // Reset the PC ID to 1
             drawLab();  // Re-draw after clearing
         });
 
