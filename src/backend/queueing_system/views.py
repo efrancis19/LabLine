@@ -10,10 +10,9 @@ from channels.layers import get_channel_layer
 from collections import deque
 import json
 from django.contrib import messages
+from queueing_system.core.state import ONLINE_TUTORS
 
 
-request_queue = deque() # Deque used to store requests sent by students
-assigned_requests = deque()
 
 def home(request):
     return render(request, 'index.html')
@@ -113,7 +112,7 @@ def tutor_dashboard(request):
     #Displays a dashboard for tutors with a list of their assigned and pending requests.
     user = request.user
     assigned_requests = HelpRequest.objects.filter(tutor=user, status='in_progress')
-    pending_requests = HelpRequest.objects.filter(status='pending')
+    pending_requests = HelpRequest.objects.filter(status='pending', tutor=user)
     return render(request, 'tutor_dashboard.html', {
         'assigned_requests': assigned_requests,
         'pending_requests': pending_requests,
@@ -185,13 +184,19 @@ def submit_request(request):
         if form.is_valid():
             help_request = form.save(commit=False)
             help_request.student = request.user
-            help_request.save()
-            request_queue.append(help_request)
+            if ONLINE_TUTORS:
+                selected_tutor_id = ONLINE_TUTORS.popleft()
+                ONLINE_TUTORS.append(selected_tutor_id)
+                selected_tutor = CustomUser.objects.get(id=selected_tutor_id)
+                help_request.tutor = selected_tutor
 
-            # Notify all tutors
+            help_request.save()
+
+            # Notify tutors
             channel_layer = get_channel_layer()
-            async_to_sync(channel_layer.group_send)(
-                "tutors_group",
+            if help_request.tutor:
+                async_to_sync(channel_layer.group_send)(
+                    f"tutor_{help_request.tutor.id}",
                 {
                     "type": "update_dashboard",
                     "message": f"New help request from {request.user.username}: {help_request.description}",
@@ -233,29 +238,31 @@ def submit_request(request):
 
 def accept_request(request, pk):
     help_request = get_object_or_404(HelpRequest, pk=pk, status='pending')
-    help_request.tutor = request.user
 
-    if help_request in request_queue and help_request == request_queue[0]:
-        help_request.status = 'in_progress'
-        help_request.save()
-        request_queue.popleft()
-        assigned_requests.append(help_request)
+    # Make sure the tutor is only accepting their own assigned request
+    if help_request.tutor != request.user:
+        return redirect('tutor_dashboard')
 
-        # Notify the student
-        notify_dashboard(
-            help_request.student.id,
-            f"Your request '{help_request.description}' has been accepted by {request.user.username}.",
-            event_type="status_update",
-            request_id=help_request.id,
-            new_status="in_progress",
-            student=help_request.student.username,
-            description=help_request.description
-        )
+    # Mark request as in progress
+    help_request.status = 'in_progress'
+    help_request.save()
 
-        # Notify all tutors to remove from pending list
-        channel_layer = get_channel_layer()
+    # Notify the student
+    notify_dashboard(
+        help_request.student.id,
+        f"Your request '{help_request.description}' has been accepted by {request.user.username}.",
+        event_type="status_update",
+        request_id=help_request.id,
+        new_status="in_progress",
+        student=help_request.student.username,
+        description=help_request.description
+    )
+
+    # Notify the assigned tutor (the one accepting it) to update their dashboard
+    channel_layer = get_channel_layer()
+    if help_request.tutor:
         async_to_sync(channel_layer.group_send)(
-            "tutors_group",
+            f"tutor_{help_request.tutor.id}",
             {
                 "type": "update_dashboard",
                 "message": f"The request '{help_request.description}' was accepted.",
@@ -266,8 +273,11 @@ def accept_request(request, pk):
                 "description": help_request.description
             }
         )
+    
+    broadcast_queue_positions()
 
     return redirect('tutor_dashboard')
+
 
 
 def get_all_students(request):
@@ -315,10 +325,12 @@ def mark_completed(request, pk):
         description=help_request.description
     )
 
-    # Notify tutors to remove from pending requests
+    # Notify assigned tutor to remove from dashboard
     channel_layer = get_channel_layer()
-    async_to_sync(channel_layer.group_send)(
-        "tutors_group",
+    if help_request.tutor:
+        async_to_sync(channel_layer.group_send)(
+            f"tutor_{help_request.tutor.id}",
+
         {
             "type": "update_dashboard",
             "message": f"The request '{help_request.description}' was marked as completed by tutor.",
@@ -329,28 +341,7 @@ def mark_completed(request, pk):
             "description": help_request.description
         }
     )
-
-    # Remove the request from deque
-    if help_request in request_queue:
-        request_queue.remove(help_request)
-    elif help_request in assigned_requests:
-        assigned_requests.remove(help_request)
-
-    # Ensure next pending request gets the "Accept" button
-    if request_queue:
-        next_request = request_queue[0]
-        async_to_sync(channel_layer.group_send)(
-            "tutors_group",
-            {
-                "type": "new_request",
-                "message": f"The request '{next_request.description}' is now available.",
-                "request_id": next_request.id,
-                "student": next_request.student.username,
-                "description": next_request.description
-            }
-        )
-
-        broadcast_queue_positions()
+    broadcast_queue_positions()
 
     return redirect('tutor_dashboard')
 
@@ -362,11 +353,6 @@ def cancel_request(request, pk):
     if request.user == help_request.student:
         help_request.status = 'canceled'
         help_request.save()
-
-        if help_request in request_queue:
-            request_queue.remove(help_request)
-        elif help_request in assigned_requests:
-            assigned_requests.remove(help_request)
 
         # Notify the student
         notify_dashboard(
@@ -382,8 +368,9 @@ def cancel_request(request, pk):
 
         # Notify tutors
         channel_layer = get_channel_layer()
-        async_to_sync(channel_layer.group_send)(
-            "tutors_group",
+        if help_request.tutor:
+            async_to_sync(channel_layer.group_send)(
+                f"tutor_{help_request.tutor.id}",
             {
                 "type": "update_dashboard",
                 "message": f"The request '{help_request.description}' was canceled by the student.",

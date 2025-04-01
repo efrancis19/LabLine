@@ -1,5 +1,8 @@
 from channels.generic.websocket import AsyncWebsocketConsumer
 import json
+from queueing_system.core.state import ONLINE_TUTORS
+
+
 
 
 class DashboardConsumer(AsyncWebsocketConsumer):
@@ -10,13 +13,14 @@ class DashboardConsumer(AsyncWebsocketConsumer):
             self.user_id = self.scope["user"].id
             user_type = self.scope["user"].user_type
 
-            # Ensure that group_name is properly assigned
             if user_type == "tutor":
-                self.group_name = "tutors_group"
+                self.group_name = f"tutor_{self.user_id}"
+                if self.user_id not in ONLINE_TUTORS:
+                    ONLINE_TUTORS.append(self.user_id)
+
             elif user_type == "lecturer":
-                self.group_name = "lecturers_group"  # New group for lecturers
+                self.group_name = "lecturers_group"
             else:
-                # Default to user-specific group if not a tutor or lecturer
                 self.group_name = f"user_{self.user_id}"
 
             await self.channel_layer.group_add(self.group_name, self.channel_name)
@@ -26,6 +30,10 @@ class DashboardConsumer(AsyncWebsocketConsumer):
         # Ensure that group_name is available before trying to remove from group
         if hasattr(self, 'group_name'):
             await self.channel_layer.group_discard(self.group_name, self.channel_name)
+        
+        # Remove tutor from list if they disconnect
+        if hasattr(self, 'user_id') and self.user_id in ONLINE_TUTORS:
+            ONLINE_TUTORS.remove(self.user_id)
 
     async def update_dashboard(self, event):
         message = {
