@@ -36,7 +36,27 @@
     </div>
 </div>
 
+<div>
+    <form id="logoutAllForm" method="post" action="{% url 'force_logout_users' %}" style="margin-top: 1rem;">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger">
+            Logout All Students & Tutors
+        </button>
+    </form>
+</div>
+
+<script>
+    document.getElementById('logoutAllForm').addEventListener('submit', function(event) {
+        const confirmed = confirm("Are you sure you want to log out all students and tutors?");
+        if (!confirmed) {
+            event.preventDefault();  // Cancel submission if not confirmed
+        }
+    });
+</script>
+
+
 <script type="text/javascript">
+
 // Connect to the WebSocket for tutor dashboard updates through the url '/ws/dashboard/'
 function connectWebSocket(url, onMessage) {
     let socket = new WebSocket('ws://' + window.location.host + '/ws/dashboard/');

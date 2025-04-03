@@ -4,6 +4,7 @@ from . import views
 urlpatterns = [
     path('', views.home, name='index'),
     path('register/', views.register, name='register'),
+    path('register/student/', views.student_register, name='student_register'),
     path('login/', views.login_view, name='login'),
     path('logout/', views.logout_view, name='logout'),
     path('choose_lab_and_pc/', views.choose_lab_and_pc, name='choose_lab_and_pc'),
@@ -19,11 +20,10 @@ urlpatterns = [
     path('lab_map/', views.lab_map, name='lab_map'),
     path('api/get_all_students/', views.get_all_students, name='active_requests'),
     path('api/update_position/', views.update_position, name='update_position'),
-    #path('about_us/', views.about_us, name='about_us'),
-    #path('references/', views.references, name='references'),
     path('lecturer_dashboard/', views.lecturer_dashboard, name='lecturer_dashboard'),
     path('create_lab', views.create_lab, name='create_lab'),
     path('save_layout/', views.save_layout, name='save_layout'),
     path('get_saved_canvas/<int:layout_id>/', views.get_saved_canvas, name='get_saved_canvas'),
     path('delete_layout/<int:layout_id>/', views.delete_layout, name='delete_layout'),
+    path('logout_all_users/', views.force_logout_users, name='force_logout_users'),
 ]

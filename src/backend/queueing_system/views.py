@@ -7,10 +7,13 @@ from django.contrib.auth.forms import AuthenticationForm
 from django.http import JsonResponse
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
-from collections import deque
 import json
 from django.contrib import messages
 from queueing_system.core.state import ONLINE_TUTORS
+from django.contrib.sessions.models import Session
+from django.contrib.auth.decorators import user_passes_test
+from django.contrib.sessions.backends.db import SessionStore
+
 
 
 
@@ -35,6 +38,22 @@ def register(request):
     else:
         form = CustomUserCreationForm()
     return render(request, 'register.html', {'form': form})
+
+
+def student_register(request):
+    if request.method == 'POST':
+        form = CustomUserCreationForm(request.POST)
+        if form.is_valid():
+            user = form.save(commit=False)
+            user.user_type = 'student'  #  Force student type here
+            user.save()
+            login(request, user)
+            return redirect('choose_lab_and_pc')
+    else:
+        form = CustomUserCreationForm()
+    return render(request, 'register.html', {'form': form})
+
+
 
 
 def logout_view(request):
@@ -480,3 +499,31 @@ def update_position(request):
             return JsonResponse({"error": "Student not found"}, status=404)
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=500)
+        
+
+
+def is_tutor_or_lecturer(user):
+    return user.is_authenticated and user.user_type in ['tutor', 'lecturer']
+
+@user_passes_test(is_tutor_or_lecturer)
+def force_logout_users(request):
+    current_session_key = request.session.session_key
+
+    for session in Session.objects.all():
+        data = session.get_decoded()
+        user_id = data.get('_auth_user_id')
+        if str(user_id) == str(request.user.id):
+            continue  # Don't log out the person triggering the logout
+
+        try:
+            user = CustomUser.objects.get(id=user_id)
+            if user.user_type in ['student', 'tutor']:  # Only log out students and tutors
+                session.delete()
+        except CustomUser.DoesNotExist:
+            pass
+
+    messages.success(request, "All students and tutors (except you) have been logged out.")
+    if request.user.user_type == 'tutor':
+        return redirect('tutor_dashboard')
+    else:
+        return redirect('lecturer_dashboard')
