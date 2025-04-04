@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+
+<!DOCTYPE html>
+<html lang="en">
+{% block content %}
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Saved Lab Layouts</title>
+</head>
+<body>
+    <h1>Saved Lab Layouts</h1>
+    <ul>
+        {% for layout in layouts %}
+            <li>
+                <a href="{% url 'get_saved_canvas' layout.id %}">Lab Name: {{ layout.name }}, Lab ID: {{ layout.id }} - Created on {{ layout.created_at }}</a>
+            </li>
+        {% endfor %}
+    </ul>
+</body>
+</html>
+{% endblock %}

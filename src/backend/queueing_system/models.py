@@ -29,5 +29,6 @@ class HelpRequest(models.Model):
 
 class CanvasLayout(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+    name = models.CharField(max_length=10, default="Unnamed Lab")
     layout_data = models.JSONField()  # Store the squares as JSON data
     created_at = models.DateTimeField(auto_now_add=True)

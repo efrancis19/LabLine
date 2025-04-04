@@ -23,6 +23,7 @@ urlpatterns = [
     path('lecturer_dashboard/', views.lecturer_dashboard, name='lecturer_dashboard'),
     path('create_lab', views.create_lab, name='create_lab'),
     path('save_layout/', views.save_layout, name='save_layout'),
+    path('view_layouts/', views.view_layouts, name='view_layouts'),
     path('get_saved_canvas/<int:layout_id>/', views.get_saved_canvas, name='get_saved_canvas'),
     path('delete_layout/<int:layout_id>/', views.delete_layout, name='delete_layout'),
     path('logout_all_users/', views.force_logout_users, name='force_logout_users'),

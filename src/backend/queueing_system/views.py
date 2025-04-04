@@ -167,6 +167,7 @@ def save_layout(request):
             # Get data from the frontend
             data = json.loads(request.body)
             PCs = data.get('PCs', [])
+            lab_name = data.get('name', 'Unnamed Lab')
 
             for i, PC in enumerate(PCs):
                 if 'id' not in PC:
@@ -176,13 +177,21 @@ def save_layout(request):
             user = request.user
 
             # Save the lab layout to the database
-            layout = CanvasLayout(user=user, layout_data=json.dumps(PCs))
+            layout = CanvasLayout(user=user, name=lab_name, layout_data=json.dumps(PCs))
             layout.save()
 
             return JsonResponse({'success': True})
         except Exception as e:
             return JsonResponse({'success': False, 'error': str(e)})
     return JsonResponse({'success': False, 'error': 'Invalid request'})
+
+
+def view_layouts(request):
+    lab_layouts = CanvasLayout.objects.all()  # Get all saved canvas layouts
+
+    return render(request, 'list_saved_labs.html', {
+        'layouts': lab_layouts
+    })
 
 
 def get_saved_canvas(request, layout_id):

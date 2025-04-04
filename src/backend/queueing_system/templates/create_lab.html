@@ -16,6 +16,7 @@
 <body>
     <h1>Lab Layout Creation</h1>
     <div class="controls">
+        <input type="text" id="labName" placeholder="Enter layout name" />
         <button id="addPCBtn">Add PC</button>
         <button id="saveLabBtn">Save Layout</button>
         <button id="clearCanvasBtn">Clear Lab Canvas</button>
@@ -87,13 +88,14 @@
         });
 
         saveLabBtn.addEventListener('click', () => {
+            const labName = document.getElementById('labName').value.trim();
             fetch('/save_layout/', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-CSRFToken': getCookie('csrftoken'),
                 },
-                body: JSON.stringify({PCs: PCs}),
+                body: JSON.stringify({PCs: PCs, name: labName}),
             })
             .then(response => response.json())
             .then(data => {
