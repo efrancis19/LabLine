@@ -213,15 +213,17 @@ def get_saved_canvas(request, layout_id):
 
 
 def delete_layout(request, layout_id):
-    if request.method == 'POST':
+    if request.method == 'DELETE':
+        layout = get_object_or_404(CanvasLayout, id=layout_id)
+        
         try:
-            # Get the lab layout associated with the layout id.
-            layout = CanvasLayout.objects.get(id=layout_id, user=request.user)
+            # Delete the layout
             layout.delete()
             return JsonResponse({'success': True})
-        except CanvasLayout.DoesNotExist:
-            return JsonResponse({'success': False, 'error': 'Lab Layout not found'})
-    return JsonResponse({'success': False, 'error': 'Invalid request'})
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)})
+    else:
+        return JsonResponse({'success': False, 'error': 'Invalid request method'})
 
 
 

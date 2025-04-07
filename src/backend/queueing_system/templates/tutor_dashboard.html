@@ -124,7 +124,7 @@ const dashboardSocket = connectWebSocket(
 
             // Set the innerHTML outside of the if statement
             newRequestItem.innerHTML = `
-                ${data.student} - ${data.description}
+                ${data.student} - ${data.description} - ${data.pc_number}
             `;
 
             // Ensure the first item gets the Accept button
@@ -176,7 +176,7 @@ const dashboardSocket = connectWebSocket(
                 const newAssignedItem = document.createElement("li");
                 newAssignedItem.id = `assigned-request-${requestId}`;
                 newAssignedItem.innerHTML = `
-                    ${data.student} - ${data.description}
+                    ${data.student} - ${data.description} - ${data.pc_number}
                     <button class="mark-completed" data-request-id="${requestId}">Mark as Completed</button>
                 `;
                 assignedRequestsList.appendChild(newAssignedItem);
