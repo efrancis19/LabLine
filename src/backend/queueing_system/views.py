@@ -196,6 +196,7 @@ def view_layouts(request):
 
 def get_saved_canvas(request, layout_id):
     layout = get_object_or_404(CanvasLayout, id=layout_id)
+    selected_pc = request.GET.get('selected_pc')
 
     if isinstance(layout.layout_data, str):
         try:
@@ -208,7 +209,8 @@ def get_saved_canvas(request, layout_id):
     print("Raw layout_data from DB:", layout_data)
 
     return render(request, 'get_saved_canvas.html', {
-        'layout_data': json.dumps(layout_data)
+        'layout_data': json.dumps(layout_data),
+        'selected_pc': selected_pc,
     })
 
 
@@ -253,6 +255,8 @@ def submit_request(request):
                     "request_id": help_request.id,
                     "description": help_request.description,
                     "student": request.user.username,
+                    "pc_number": request.user.pc_number,
+                    "lab_id": request.user.lab_id,
                 }
             )
 
@@ -276,7 +280,6 @@ def submit_request(request):
                 new_status="pending",
                 description=help_request.description,
                 student=help_request.student.username,
-                pc_number=help_request.pc_number
             )
 
             return redirect('student_dashboard')
@@ -319,7 +322,9 @@ def accept_request(request, pk):
                 "request_id": help_request.id,
                 "new_status": "in_progress",
                 "student": help_request.student.username,
-                "description": help_request.description
+                "description": help_request.description,
+                "pc_number": help_request.student.pc_number,
+                "lab_id": help_request.student.lab_id,
             }
         )
     
@@ -428,7 +433,8 @@ def cancel_request(request, pk):
                 "new_status": "canceled",
                 "student": help_request.student.username,
                 "description": help_request.description,
-                "pc_number": help_request.pc_number,
+                "pc_number": request.user.pc_number,
+                "lab_id": request.user.lab_id,
             }
         )
 

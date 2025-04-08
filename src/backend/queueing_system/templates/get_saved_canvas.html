@@ -59,6 +59,7 @@
             }
 
             const ctx = canvas.getContext('2d');
+            const selectedPC = "{{ selected_pc|default:'' }}";
 
             // Function to draw the layout on the canvas.
             function drawLab() {
@@ -68,7 +69,8 @@
                     console.log("Valid lab layout received:", layoutData);
                     layoutData.forEach(PC => {
                         if (typeof PC.x === 'number' && typeof PC.y === 'number' && typeof PC.size === 'number') {
-                            ctx.fillStyle = 'blue';
+                            const isSelected = selectedPC && String(pc.id) === String(selectedPC);
+                            ctx.fillStyle = isSelected ? 'green' : 'blue';
                             ctx.fillRect(PC.x, PC.y, PC.size, PC.size);
 
                             ctx.fillStyle = 'white';
