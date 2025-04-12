@@ -9,6 +9,7 @@ urlpatterns = [
     path('logout/', views.logout_view, name='logout'),
     path('choose_lab_and_pc/', views.choose_lab_and_pc, name='choose_lab_and_pc'),
     path('lg25_map/', views.lg25_map, name='lg25_map'),
+    path('lg26_map/', views.lg26_map, name='lg26_map'),
     path("api/pc-data/", views.pc_data, name="pc-data"),    
     path('student_dashboard/', views.student_dashboard, name='student_dashboard'),
     path('tutor_dashboard/', views.tutor_dashboard, name='tutor_dashboard'),

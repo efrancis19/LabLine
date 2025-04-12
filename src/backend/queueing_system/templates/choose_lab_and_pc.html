@@ -7,12 +7,50 @@
   <form method="post">
     {% csrf_token %}
     
+    <label for="lab_id">Lab:</label>
+    <select name="lab_id" id="lab_id" required onchange="updatePCNumbers()">
+        <option value="lg25" {% if form.lab_id.value == 'lg25' %}selected{% endif %}>LG25</option>
+        <option value="lg26" {% if form.lab_id.value == 'lg26' %}selected{% endif %}>LG26</option>
+    </select>
+    
     <label for="pc_number">PC Number:</label>
-    <input type="text" id="pc_number" name="pc_number" value="{{ form.pc_number.value|default_if_none:'' }}" required>
-
-    <label for="lab_id">Lab ID:</label>
-    <input type="text" id="lab_id" name="lab_id" value="{{ form.lab_id.value|default_if_none:'' }}" required>
+    <select name="pc_number" id="pc_number" required>
+    </select>
     
     <button type="submit">Save</button>
   </form>
+
+  <script>
+    // Function to automatically update PC numbers based on the chosen lab.
+    function updatePCNumbers() {
+        var labId = document.getElementById('lab_id').value;
+        var pcNumberField = document.getElementById('pc_number');
+        var pcNumbers = [];
+
+        // Listing the available PC numbers based on the chosen lab.
+        if (labId === 'lg25') {
+            pcNumbers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50];  // 9 PCs for LG25
+        } else if (labId === 'lg26') {
+            pcNumbers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50];
+        }
+
+        pcNumberField.innerHTML = '';
+
+        // Default select option.
+        var defaultOption = document.createElement('option');
+        defaultOption.value = '';
+        defaultOption.text = 'Choose a PC';
+        pcNumberField.appendChild(defaultOption);
+
+        // Add the PC options to the dropdown.
+        pcNumbers.forEach(function(pc) {
+            var option = document.createElement('option');
+            option.value = pc;
+            option.text = pc;
+            pcNumberField.appendChild(option);
+        });
+    }
+
+    updatePCNumbers();
+  </script>
 {% endblock %}

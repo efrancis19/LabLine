@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LG25 Map</title>
+    <title>LG26 Map</title>
 </head>
 <body>
-    <canvas id="lg25Map" width="800" height="500"></canvas>
+    <canvas id="lg26Map" width="800" height="500"></canvas>
 
     <script>
         window.onload = function() {
-        const canvas = document.getElementById("lg25Map");
+        const canvas = document.getElementById("lg26Map");
         const ctx = canvas.getContext("2d");
 
         const PCSize = 50;  // Size of each PC on the canvas in pixels.
@@ -37,7 +37,7 @@
         async function getPCs() { // Async function to get PCs from Django data.
             try {
                 // Fetch active PC numbers for this lab (lg26).
-                let response = await fetch("/api/pc-data/?lab_id=lg25"); // Fetch only PCs for LG25
+                let response = await fetch("/api/pc-data/?lab_id=lg26"); // Fetch only PCs for LG26.
                 if (!response.ok) throw new Error("Failed to get PC data");
 
                 let data = await response.json();   // Take data from pc_data view as data.
@@ -80,7 +80,7 @@
                     let y = startY + row * (PCSize + PCSpace + rowSpace);
                     let pcNumber = rowIDs[col];
 
-                    // Change color to green only if the PC is active in LG25.
+                    // Change color to green only if the PC is active in LG26.
                     ctx.fillStyle = activePCs.includes(pcNumber) ? "green" : "blue";
                     ctx.fillRect(x, y, PCSize, PCSize);
 

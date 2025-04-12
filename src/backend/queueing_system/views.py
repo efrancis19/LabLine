@@ -89,20 +89,28 @@ def choose_lab_and_pc(request):
     return render(request, 'choose_lab_and_pc.html')
 
 def choose_lab_and_pc(request):
+    lab_pc_count = {    # Indicate the number of PCs available to choose from each lab.
+        'lg25': 50,
+        'lg26': 50,
+    }
     if request.method == "POST":
-        print("POST received")
         form = PCNumberForm(request.POST)
         if form.is_valid():
-            pc_number = form.cleaned_data["pc_number"]  # Extract PC number from form
+            pc_number = form.cleaned_data["pc_number"]  # Extract PC number from form.
             lab_id = form.cleaned_data["lab_id"]
-            request.user.pc_number = pc_number  # Assign to logged-in user
+            request.user.pc_number = pc_number  # Assign to logged-in user.
             request.user.lab_id = lab_id
-            request.user.save()  # Save user model
-            print(f"User: {request.user}, Entered PC Number: {pc_number} and Lab ID: {lab_id}")
-            messages.success(request, f"Welcome! Your PC number is {pc_number}.")
+            request.user.save() # Save user model.
+            messages.success(request, f"Your PC number is {pc_number} in lab {lab_id}.")
             return redirect("student_dashboard")
     else:
+        lab_id = request.GET.get('lab_id', None)
         form = PCNumberForm()
+
+        if lab_id in lab_pc_count:
+            available_pcs = [(i, str(i)) for i in range(1, lab_pc_count[lab_id] + 1)]   # List the available PCs to choose from.
+            form.fields['pc_number'].choices = available_pcs
+            form.fields['lab_id'].initial = lab_id
 
     return render(request, "choose_lab_and_pc.html", {"form": form})
 
@@ -355,11 +363,22 @@ def lab_map(request):
     return render(request, 'lab_map.html')
 
 def lg25_map(request):
-    users = CustomUser.objects.all()
-    return render(request, 'lg25_map.html', {'users': users})
+    # Get the list of active PCs for LG25
+    users = CustomUser.objects.filter(lab_id="lg25").values("pc_number")
+    activePCs = [user["pc_number"] for user in users]
+    
+    return render(request, 'lg25_map.html', {'activePCs': activePCs})
+
+def lg26_map(request):
+    # Get the list of active PCs for LG26
+    users = CustomUser.objects.filter(lab_id="lg26").values("pc_number")
+    activePCs = [user["pc_number"] for user in users]
+    
+    return render(request, 'lg26_map.html', {'activePCs': activePCs})
 
 def pc_data(request):
-    users = CustomUser.objects.all().values("pc_number")
+    lab_id = request.GET.get('lab_id')  # Get the lab_id from the GET parameters
+    users = CustomUser.objects.filter(lab_id=lab_id).values("pc_number")
     return JsonResponse(list(users), safe=False)
 
 def mark_completed(request, pk):
