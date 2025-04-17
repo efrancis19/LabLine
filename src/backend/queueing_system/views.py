@@ -267,6 +267,16 @@ def submit_request(request):
                     "lab_id": request.user.lab_id,
                 }
             )
+                
+            # Notify lecturers
+            async_to_sync(channel_layer.group_send)(
+                "lecturers_group",
+                {
+                    "type": "update_dashboard",
+                    "message": "A new help request has been submitted.",
+                    "event_type": "new_request",
+                }
+            )
 
             #notify lecturer
             channel_layer = get_channel_layer()
@@ -278,6 +288,8 @@ def submit_request(request):
                     "event_type": "new_request",
                 }
             )
+
+            channel_layer = get_channel_layer()
 
             # Notify the student with status update and queue position
             notify_dashboard(
@@ -377,15 +389,32 @@ def lg26_map(request):
     return render(request, 'lg26_map.html', {'activePCs': activePCs})
 
 def pc_data(request):
-    lab_id = request.GET.get('lab_id')  # Get the lab_id from the GET parameters
-    users = CustomUser.objects.filter(lab_id=lab_id).values("pc_number")
-    return JsonResponse(list(users), safe=False)
+    lab_id = request.GET.get('lab_id')  # Get lab_id from the query string
+    if not lab_id:
+        return JsonResponse({'error': 'lab_id is required'}, status=400)
+
+    # Get users from the specific lab
+    users = CustomUser.objects.filter(lab_id=lab_id)
+    data = []
+    for user in users:
+        # Check if the user has a request that is pending.
+        active_request = HelpRequest.objects.filter(student=user, status='pending').first()
+        status = 'pending' if active_request else 'active'
+
+        # Add the PC number, status of the requests associated with it and it's lab location to the data that will be sent as JSON.
+        data.append({
+            "pc_number": user.pc_number,
+            "status": status,
+            "lab_id": user.lab_id,
+        })
+
+    return JsonResponse(data, safe=False)
+
 
 def mark_completed(request, pk):
     help_request = get_object_or_404(HelpRequest, pk=pk, status='in_progress')
     help_request.status = 'completed'
     help_request.save()
-
 
     # Notify the student
     notify_dashboard(

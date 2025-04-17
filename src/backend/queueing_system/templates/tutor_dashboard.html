@@ -85,6 +85,16 @@ function connectWebSocket(url, onMessage) {
     };
 
     return socket;
+
+    document.addEventListener('DOMContentLoaded', function () {
+    if (!dashboardSocket || dashboardSocket.readyState !== WebSocket.OPEN) {
+        connectWebSocket('ws://' + window.location.host + '/ws/dashboard/', function (e) {
+            const data = JSON.parse(e.data);
+            console.log("WebSocket message received:", data);
+            // Handle updates for requests
+        });
+    }
+});
 }
 
 function refreshAcceptButton() {

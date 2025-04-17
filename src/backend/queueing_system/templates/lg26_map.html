@@ -1,106 +1,157 @@
 <!DOCTYPE html>
+{% extends 'base.html' %}
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LG26 Map</title>
 </head>
+
+{% block title %}LG26 Map{% endblock %}
+
+{% block content %}
+
 <body>
     <canvas id="lg26Map" width="800" height="500"></canvas>
 
     <script>
-        window.onload = function() {
-        const canvas = document.getElementById("lg26Map");
-        const ctx = canvas.getContext("2d");
+        let dashboardSocket;
 
-        const PCSize = 50;  // Size of each PC on the canvas in pixels.
-        const PCSpace = 10;   // Space between each PC in a row.
-        const rowSpace = 25;  // Space between each row.
-        const startX = 100; // Starting X coordinate when drawing the canvas.
-        const startY = 10;  // Starting Y coordinate when drawing the canvas.
-
-        const rows = [9, 8, 8, 8, 8, 9];    // Indicates the number of PCs in each row.
-        const secondPC_X = startX + PCSize + PCSpace;  // Defines the first PC for the 2nd to 5th rows since have one PC less than the first and last.
-
-        const totalWidth = Math.max(...rows) * (PCSize + PCSpace) + startX;
-        const totalHeight = rows.length * (PCSize + PCSpace + rowSpace) + startY;
-
-        // Set canvas size
-        canvas.width = totalWidth;
-        canvas.height = totalHeight;
-
-        const doorWidth = 20;   // Representation of a door to show where the entrance to the lab is located.
-        const doorHeight = PCSize + (rowSpace * 2);
-        const doorX = startX - doorWidth - PCSpace;
-        const doorY = startY + 50;
-
-        async function getPCs() { // Async function to get PCs from Django data.
-            try {
-                // Fetch active PC numbers for this lab (lg26).
-                let response = await fetch("/api/pc-data/?lab_id=lg26"); // Fetch only PCs for LG26.
-                if (!response.ok) throw new Error("Failed to get PC data");
-
-                let data = await response.json();   // Take data from pc_data view as data.
-                let activePCs = data.map(user => user.pc_number);   // Map the students who have indicated their PC number.
-                console.log("Active PCs:", activePCs);
-
-                drawLab(activePCs);  // Call the drawLab function with the map array of PCs registered with students as input.
-            } catch (error) {
-                console.error("Error getting PC data:", error);
+        // Connect WebSocket specific to LG26.
+        function connectWebSocket(url, onMessage) {
+            if (dashboardSocket && dashboardSocket.readyState === WebSocket.OPEN) {
+                console.log("WebSocket already open. No need to reconnect.");
+                return dashboardSocket;
             }
+
+            dashboardSocket = new WebSocket('ws://' + window.location.host + '/ws/dashboard/');
+            dashboardSocket.onopen = function () {
+                console.log("WebSocket connected to", url);
+            };
+
+            dashboardSocket.onmessage = onMessage;
+
+            dashboardSocket.onerror = function (error) {
+                console.error("WebSocket error:", error);
+            };
+
+            dashboardSocket.onclose = function () {
+                console.error("WebSocket closed unexpectedly. Reconnecting...");
+                setTimeout(function () {
+                    connectWebSocket(url, onMessage);
+                }, 1000);
+            };
+
+            return dashboardSocket;
         }
 
-        // Function to draw the grid
-        function drawLab(activePCs = []) {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            ctx.fillStyle = "brown";
-            ctx.fillRect(doorX, doorY, doorWidth, doorHeight);
-
-            let pcNum = 1;  // Initialise the first PC on the canvas with 1.
-
-            for (let row = 0; row < rows.length; row++) {   // Iterate over each row.
-                const numPCsInRow = rows[row];  // Variable to define the number of PCs in each row.
-                let rowIDs = [];
-
-                if (row % 2 === 0) {
-                    for (let col = 0; col < numPCsInRow; col++) {
-                        rowIDs.push(pcNum++);   // Push method adds array elements from beginning. This ensures that in odd numbered rows that numbers are allocated from left to right.
-                    }
-                } else {
-                    for (let col = 0; col < numPCsInRow; col++) {
-                        rowIDs.unshift(pcNum++);    // Unshift method adds array elements from beginning. This ensures that in even numbered rows that numbers are allocated from right to left.
-                    }
-                }
-
-                let rowStartX = (row === 0 || row === 5) ? startX : secondPC_X; // If the row id is 0 or 5, set the initial X coordinate to that of the startx variable, else set to that of secondPC_X.
-
-                for (let col = 0; col < numPCsInRow; col++) {
-                    let x = rowStartX + col * (PCSize + PCSpace);
-                    let y = startY + row * (PCSize + PCSpace + rowSpace);
-                    let pcNumber = rowIDs[col];
-
-                    // Change color to green only if the PC is active in LG26.
-                    ctx.fillStyle = activePCs.includes(pcNumber) ? "green" : "blue";
-                    ctx.fillRect(x, y, PCSize, PCSize);
-
-                    // Border around each PC.
-                    ctx.strokeStyle = "black";
-                    ctx.strokeRect(x, y, PCSize, PCSize);
-
-                    // Draw PC Number Within Each PC.
-                    ctx.fillStyle = "white";
-                    ctx.font = "15px Arial";
-                    ctx.textAlign = "center";
-                    ctx.textBaseline = "middle";
-                    ctx.fillText(pcNumber.toString(), x + PCSize / 2, y + PCSize / 2);
-                }
+        connectWebSocket(
+            'ws://' + window.location.host + '/ws/dashboard/',
+            function (e) {
+                const data = JSON.parse(e.data);
+                console.log("WebSocket message received:", data);
             }
-        }
-
-        // Draw initial empty grid
-        drawLab([]);
-        getPCs();}
+        );
     </script>
+
+    <script>
+        window.onload = function() {
+            const canvas = document.getElementById("lg26Map");
+            const ctx = canvas.getContext("2d");
+
+            const PCSize = 50;  // Size of each PC on the canvas in pixels.
+            const PCSpace = 10; // Space between each PC in a row.
+            const rowSpace = 25;    // Space between each row.
+            const startX = 100; // Starting X coordinate when drawing the canvas.
+            const startY = 10;  // Starting Y coordinate when drawing the canvas.
+
+            const rows = [9, 8, 8, 8, 8, 9];    // Indicates the number of PCs in each row.
+            const secondPC_X = startX + PCSize + PCSpace;  // Defines the first PC for the 2nd to 5th rows since have one PC less than the first and last.
+
+            const totalWidth = Math.max(...rows) * (PCSize + PCSpace) + startX;
+            const totalHeight = rows.length * (PCSize + PCSpace + rowSpace) + startY;
+
+            // Set canvas size
+            canvas.width = totalWidth;
+            canvas.height = totalHeight;
+
+            const doorWidth = 20;   // Representation of a door to show where the entrance to the lab is located.
+            const doorHeight = PCSize + (rowSpace * 2);
+            const doorX = startX - doorWidth - PCSpace;
+            const doorY = startY + 50;
+
+            async function getPCs() {   // Async function to get PCs from Django data.
+                try {
+                    // Fetch active PC numbers for this lab (lg26).
+                    let response = await fetch("/api/pc-data/?lab_id=lg26");    // Fetch only PCs for LG26
+                    if (!response.ok) throw new Error("Failed to get PC data");
+
+                    let data = await response.json();   // Take data from pc_data view as data.
+                    let activePCs = data.map(user => user.pc_number);   // Map the students who have indicated their PC number.
+                    let requestedPCs = data.filter(user => user.status === 'pending').map(user => user.pc_number);
+
+                    drawLab(activePCs, requestedPCs);   // Call the drawLab function with the map array of PCs registered with students as input.
+                } catch (error) {
+                    console.error("Error getting PC data:", error);
+                }
+            }
+
+            // Function to draw the grid
+            function drawLab(activePCs = [], requestedPCs = []) {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                ctx.fillStyle = "brown";
+                ctx.fillRect(doorX, doorY, doorWidth, doorHeight);
+
+                let pcNum = 1;  // Initialise the first PC on the canvas with 1.
+
+                for (let row = 0; row < rows.length; row++) {   // Iterate over each row.
+                    const numPCsInRow = rows[row];  // Variable to define the number of PCs in each row.
+                    let rowIDs = [];
+
+                    if (row % 2 === 0) {
+                        for (let col = 0; col < numPCsInRow; col++) {
+                            rowIDs.push(pcNum++);   // Push method adds array elements from beginning. This ensures that in odd numbered rows that numbers are allocated from left to right.
+                        }
+                    } else {
+                        for (let col = 0; col < numPCsInRow; col++) {
+                            rowIDs.unshift(pcNum++);    // Unshift method adds array elements from beginning. This ensures that in even numbered rows that numbers are allocated from right to left.
+                        }
+                    }
+
+                    let rowStartX = (row === 0 || row === 5) ? startX : secondPC_X; // If the row id is 0 or 5, set the initial X coordinate to that of the startx variable, else set to that of secondPC_X.
+
+                    for (let col = 0; col < numPCsInRow; col++) {
+                        let x = rowStartX + col * (PCSize + PCSpace);
+                        let y = startY + row * (PCSize + PCSpace + rowSpace);
+                        let pcNumber = rowIDs[col];
+
+                        if (requestedPCs.includes(pcNumber)) {
+                            ctx.fillStyle = "red"; // If the PC has a pending request.
+                        } else {
+                            ctx.fillStyle = activePCs.includes(pcNumber) ? "green" : "blue"; // If the PC has an active user but has no pending requests, render it as green.
+                        }
+
+                        // Border around each PC.
+                        ctx.fillRect(x, y, PCSize, PCSize);
+                        ctx.strokeStyle = "black";
+                        ctx.strokeRect(x, y, PCSize, PCSize);
+
+                        // Draw PC Number Within Each PC.
+                        ctx.fillStyle = "white";
+                        ctx.font = "15px Arial";
+                        ctx.textAlign = "center";
+                        ctx.textBaseline = "middle";
+                        ctx.fillText(pcNumber.toString(), x + PCSize / 2, y + PCSize / 2);
+                    }
+                }
+            }
+
+            drawLab([]);
+            getPCs();
+        }
+    </script>
+
 </body>
 </html>
+{% endblock %}

@@ -48,3 +48,25 @@ class DashboardConsumer(AsyncWebsocketConsumer):
             "lab_id": event.get("lab_id"),
         }
         await self.send(text_data=json.dumps(message))
+
+# Consumer to handle updates to the lab maps when students login and send requests.
+class LabConsumer(AsyncWebsocketConsumer):
+    async def connect(self):
+        self.user_id = self.scope['user'].id
+        self.group_name = f"user_{self.user_id}"
+
+        await self.channel_layer.group_add(self.group_name, self.channel_name)
+        await self.accept()
+
+    async def disconnect(self, close_code):
+        await self.channel_layer.group_discard(self.group_name, self.channel_name)
+
+    async def update_pc_status(self, event):
+        pc_number = event['pc_number']
+        status = event['status']  # red for when a students has pending requests and green when they do not.
+
+        # Send the message to the WebSocket client (browser)
+        await self.send(text_data=json.dumps({
+            'pc_number': pc_number,
+            'status': status,
+        }))
