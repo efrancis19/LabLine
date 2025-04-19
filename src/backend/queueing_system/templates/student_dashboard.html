@@ -19,7 +19,10 @@
                     {% if request.status in "pending,in_progress" and request.queue_position %}
                         (Position in queue: {{ request.queue_position }})
                     {% endif %}
-                </span>                
+                </span>    
+                {% if request.status == "pending" and request.estimated_wait_time %}
+                    <span class="wait-time">Estimated wait: {{ request.estimated_wait_time }} minutes</span>
+                {% endif %}            
                 {% if request.status == "pending" %}
                     <button class="cancel-request" data-request-id="{{ request.id }}">Cancel</button>
                 {% elif request.status == "in_progress" %}
@@ -74,37 +77,37 @@
 
     // WebSocket connection for dashboard updates
     const dashboardSocket = connectWebSocket(
-        'ws://' + window.location.host + '/ws/dashboard/',  // WebSocket URL
+        'ws://' + window.location.host + '/ws/dashboard/',
         function (event) {
-            // 'onmessage' handler passed to the WebSocket
-            const data = JSON.parse(event.data);    // Parse incoming message data from the WebSocket
-            console.log("WebSocket message received:", data);   // Log the parsed data
-
-            // Check if incoming data contains a message
+            const data = JSON.parse(event.data);
+            console.log("WebSocket message received:", data);
+        
+            // Display notification messages
             if (data.message) {
-                // Add notification to the notification list if a message exists in the data
-                const notificationList = document.getElementById("notification-list");  // Get the notification list element from the DOM
-                const notificationItem = document.createElement("li");  // Create a new list item element for the notification
-                notificationItem.textContent = data.message;    // Set the text content of the list item to the message
-                notificationList.appendChild(notificationItem);  // Append the new notification item to the notification list in the DOM
+                const notificationList = document.getElementById("notification-list");
+                const notificationItem = document.createElement("li");
+                notificationItem.textContent = data.message;
+                notificationList.appendChild(notificationItem);
             }
-
-            // Check if the data is related to 'status_update'
+        
+            // Handle status update messages
             if (data.type === 'status_update') {
                 const requestId = data.request_id;
                 const newStatus = data.new_status;
                 const position = data.queue_position;
-                        
+                const estimatedWaitTime = data.estimated_wait_time;
+            
                 const requestElement = document.getElementById(`request-${requestId}`);
                 if (requestElement) {
+                    // Update status text
                     const statusElement = requestElement.querySelector(".status");
                     if (statusElement) {
                         statusElement.textContent = newStatus;
                     }
                 
+                    // Update queue position
                     const positionElement = requestElement.querySelector(".queue-position");
-                
-                    if (newStatus === "pending" || newStatus === "in_progress") {
+                    if (newStatus === "pending") {
                         if (positionElement) {
                             if (position !== undefined && position !== null) {
                                 positionElement.textContent = ` (Position in queue: ${position})`;
@@ -112,13 +115,33 @@
                                 positionElement.textContent = "";
                             }
                         }
+                    
+                        // Add or update wait time element
+                        let waitTimeElement = requestElement.querySelector(".wait-time");
+                        if (!waitTimeElement) {
+                            waitTimeElement = document.createElement("span");
+                            waitTimeElement.classList.add("wait-time");
+                            requestElement.appendChild(waitTimeElement);
+                        }
+                    
+                        if (estimatedWaitTime !== undefined && estimatedWaitTime !== null) {
+                            waitTimeElement.textContent = ` Estimated wait: ${estimatedWaitTime} minutes`;
+                        } else {
+                            waitTimeElement.textContent = "";
+                        }
+                    
                     } else {
-                        // Remove queue position if canceled or completed
+                        // If status is in_progress or completed/canceled — clean up
                         if (positionElement) {
                             positionElement.textContent = "";
                         }
                     
-                        // Also remove action buttons
+                        const waitTimeElement = requestElement.querySelector(".wait-time");
+                        if (waitTimeElement) {
+                            waitTimeElement.remove();
+                        }
+                    
+                        // Remove action buttons
                         const buttons = requestElement.querySelectorAll("button");
                         buttons.forEach(button => button.remove());
                     }

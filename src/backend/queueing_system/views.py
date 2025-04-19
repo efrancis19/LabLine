@@ -13,6 +13,7 @@ from queueing_system.core.state import ONLINE_TUTORS
 from django.contrib.sessions.models import Session
 from django.contrib.auth.decorators import user_passes_test
 from django.contrib.sessions.backends.db import SessionStore
+from datetime import datetime, timezone
 
 
 
@@ -120,32 +121,48 @@ def student_dashboard(request):
     user = request.user
     help_requests = HelpRequest.objects.filter(student=user)
 
-    # Fetch global queue to calculate positions
     queue = list(
-        HelpRequest.objects.filter(status__in=["pending", "in_progress"]).order_by("created_at")
+        HelpRequest.objects.filter(status="pending").order_by("created_at")
     )
+
+    AVERAGE_WAIT_PER_REQUEST = 5  # minutes
     request_positions = {
         req.id: idx + 1 for idx, req in enumerate(queue)
     }
 
-    # Add .queue_position to each help_request manually
     for req in help_requests:
         req.queue_position = request_positions.get(req.id)
+        if req.status == "pending" and req.queue_position:
+            req.estimated_wait_time = (req.queue_position - 1) * AVERAGE_WAIT_PER_REQUEST
+        else:
+            req.estimated_wait_time = None
 
     return render(request, 'student_dashboard.html', {'help_requests': help_requests})
 
 
 
+
+from datetime import datetime, timezone
+
 @login_required
 def tutor_dashboard(request):
-    #Displays a dashboard for tutors with a list of their assigned and pending requests.
     user = request.user
     assigned_requests = HelpRequest.objects.filter(tutor=user, status='in_progress')
     pending_requests = HelpRequest.objects.filter(status='pending', tutor=user)
+
+    for req in pending_requests:
+        if req.created_at:
+            delta = datetime.now(timezone.utc) - req.created_at
+            req.waiting_minutes = int(delta.total_seconds() // 60)
+        else:
+            req.waiting_minutes = 0
+
     return render(request, 'tutor_dashboard.html', {
         'assigned_requests': assigned_requests,
         'pending_requests': pending_requests,
     })
+
+
 
 @login_required
 def lecturer_dashboard(request):
@@ -254,20 +271,25 @@ def submit_request(request):
             # Notify tutors
             channel_layer = get_channel_layer()
             if help_request.tutor:
+                from datetime import datetime, timezone
+                delta = datetime.now(timezone.utc) - help_request.created_at
+                waiting_minutes = int(delta.total_seconds() // 60)
+
                 async_to_sync(channel_layer.group_send)(
                     f"tutor_{help_request.tutor.id}",
-                {
-                    "type": "update_dashboard",
-                    "message": f"New help request from {request.user.username}: {help_request.description}",
-                    "event_type": "new_request",
-                    "request_id": help_request.id,
-                    "description": help_request.description,
-                    "student": request.user.username,
-                    "pc_number": request.user.pc_number,
-                    "lab_id": request.user.lab_id,
-                }
-            )
-                
+                    {
+                        "type": "update_dashboard",
+                        "message": f"New help request from {request.user.username}: {help_request.description}",
+                        "event_type": "new_request",
+                        "request_id": help_request.id,
+                        "description": help_request.description,
+                        "student": request.user.username,
+                        "pc_number": request.user.pc_number,
+                        "lab_id": request.user.lab_id,
+                        "waiting_minutes": waiting_minutes,  # ✅ Added this!
+                    }
+                )
+            
             # Notify lecturers
             async_to_sync(channel_layer.group_send)(
                 "lecturers_group",
@@ -291,7 +313,12 @@ def submit_request(request):
 
             channel_layer = get_channel_layer()
 
-            # Notify the student with status update and queue position
+            # Calculate queue position and estimated wait time
+            pending_queue = HelpRequest.objects.filter(status="pending").order_by("created_at")
+            queue_position = list(pending_queue).index(help_request) + 1
+            estimated_wait = (queue_position - 1) * 5
+
+            # Notify the student with full details
             notify_dashboard(
                 user_id=help_request.student.id,
                 message=f"Your request '{help_request.description}' has been received.",
@@ -503,20 +530,30 @@ def request_history(request):
 
 
 # Notify students and tutors on the dashboard about updates
-def notify_dashboard(user_id, message, event_type=None, request_id=None, new_status=None, description=None, student=None, pc_number=None):
+def notify_dashboard(user_id, message, event_type=None, request_id=None, new_status=None, description=None, student=None, pc_number=None, lab_id=None):
+    from datetime import datetime, timezone
+
     channel_layer = get_channel_layer()
     if not channel_layer:
         print("Channel layer is not configured. Cannot send notifications.")
         return
 
-    # Determine the queue position if the request is still active (pending or in_progress)
     queue_position = None
-    if new_status in ["pending", "in_progress"] and request_id:
-        pending_requests = HelpRequest.objects.filter(status__in=["pending", "in_progress"]).order_by('created_at')
-        for idx, req in enumerate(pending_requests):
+    estimated_wait_time = None
+    waiting_minutes = None
+
+    if new_status == "pending" and request_id:
+        queue = HelpRequest.objects.filter(status="pending").order_by("created_at")
+        for idx, req in enumerate(queue):
             if req.id == request_id:
-                queue_position = idx + 1  # 1-based index
+                queue_position = idx + 1
+                estimated_wait_time = (queue_position - 1) * 5
                 break
+
+        help_request = HelpRequest.objects.get(id=request_id)
+        if help_request.created_at:
+            delta = datetime.now(timezone.utc) - help_request.created_at
+            waiting_minutes = int(delta.total_seconds() // 60)
 
     async_to_sync(channel_layer.group_send)(
         f"user_{user_id}",
@@ -528,8 +565,11 @@ def notify_dashboard(user_id, message, event_type=None, request_id=None, new_sta
             "new_status": new_status,
             "description": description,
             "student": student,
-            "PC Number": pc_number,
-            "queue_position": queue_position,  # <-- send position
+            "pc_number": pc_number,
+            "lab_id": lab_id,
+            "queue_position": queue_position,
+            "estimated_wait_time": estimated_wait_time,
+            "waiting_minutes": waiting_minutes,
         }
     )
 

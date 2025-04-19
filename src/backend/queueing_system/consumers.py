@@ -46,6 +46,8 @@ class DashboardConsumer(AsyncWebsocketConsumer):
             "queue_position": event.get("queue_position"),
             "pc_number": event.get("pc_number"),
             "lab_id": event.get("lab_id"),
+            "estimated_wait_time": event.get("estimated_wait_time"),
+            "waiting_minutes": event.get("waiting_minutes"),
         }
         await self.send(text_data=json.dumps(message))
 

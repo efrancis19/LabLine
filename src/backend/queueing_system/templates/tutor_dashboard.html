@@ -27,6 +27,9 @@
             {% for request in pending_requests %}
                 <li id="pending-request-{{ request.id }}" class="request-item">
                     <b>{{ forloop.counter }}. {{ request.student.username }}</b> - {{ request.description }} - Lab ID: {{ request.student.lab_id }} - PC Number: {{ request.student.pc_number }}
+                    {% if request.waiting_minutes is not None %}
+                        <span class="wait-time">(Waiting for {{ request.waiting_minutes }} minutes)</span>
+                    {% endif %}
                     {% if forloop.first and assigned_requests|length == 0 %}
                         <button class="accept-request" data-request-id="{{ request.id }}">Accept</button>
                     {% endif %}
@@ -45,179 +48,191 @@
     </form>
 </div>
 
-<script>
-    document.getElementById('logoutAllForm').addEventListener('submit', function(event) {
-        const confirmed = confirm("Are you sure you want to log out all students and tutors?");
-        if (!confirmed) {
-            event.preventDefault();  // Cancel submission if not confirmed
-        }
-    });
-</script>
-
-
 <script type="text/javascript">
 
-// Connect to the WebSocket for tutor dashboard updates through the url '/ws/dashboard/'
-function connectWebSocket(url, onMessage) {
-    let socket = new WebSocket('ws://' + window.location.host + '/ws/dashboard/');
-    socket.onload = function () {
+    // Function to connect to WebSocket for tutor dashboard updates
+    function connectWebSocket(url, onMessage) {
+        let socket = new WebSocket('ws://' + window.location.host + '/ws/dashboard/');
+    
+        socket.onload = function () {
+            const pendingRequestsList = document.getElementById("pending-requests-list");
+            if (pendingRequestsList.children.length === 0) {
+                pendingRequestsList.innerHTML = '';
+            }
+        };
+    
+        socket.onopen = function () {
+            console.log("WebSocket connected to", url);
+        };
+    
+        socket.onmessage = onMessage;
+    
+        socket.onerror = function (error) {
+            console.error("WebSocket error:", error);
+        };
+    
+        socket.onclose = function () {
+            console.error("WebSocket closed unexpectedly. Reconnecting...");
+            setTimeout(function () {
+                connectWebSocket(url, onMessage);
+            }, 1000);
+        };
+    
+        return socket;
+    }
+    
+    // Update Accept button visibility
+    function refreshAcceptButton() {
         const pendingRequestsList = document.getElementById("pending-requests-list");
-        if (pendingRequestsList.children.length === 0) {
-            pendingRequestsList.innerHTML = '';
+        pendingRequestsList.querySelectorAll(".accept-request").forEach(btn => btn.remove());
+    
+        const assignedCount = document.getElementById("assigned-requests-list").children.length;
+        if (assignedCount === 0 && pendingRequestsList.children.length > 0) {
+            const firstItem = pendingRequestsList.children[0];
+            const firstRequestId = firstItem.id.replace("pending-request-", "");
+            const acceptButton = document.createElement("button");
+            acceptButton.classList.add("accept-request");
+            acceptButton.setAttribute("data-request-id", firstRequestId);
+            acceptButton.textContent = "Accept";
+            firstItem.appendChild(acceptButton);
         }
-    };
-
-    socket.onopen = function () {
-        console.log("WebSocket connected to", url);
-    };
-
-    socket.onmessage = onMessage;
-
-    socket.onerror = function (error) {
-        console.error("WebSocket error:", error);
-    };
-
-    socket.onclose = function () {
-        console.error("WebSocket closed unexpectedly. Reconnecting...");
-        setTimeout(function () {
-            connectWebSocket(url, onMessage);
-        }, 1000);
-    };
-
-    return socket;
-
-    document.addEventListener('DOMContentLoaded', function () {
-    if (!dashboardSocket || dashboardSocket.readyState !== WebSocket.OPEN) {
-        connectWebSocket('ws://' + window.location.host + '/ws/dashboard/', function (e) {
+    }
+    
+    // WebSocket connection for dashboard updates
+    const dashboardSocket = connectWebSocket(
+        'ws://' + window.location.host + '/ws/dashboard/',
+        function (e) {
             const data = JSON.parse(e.data);
             console.log("WebSocket message received:", data);
-            // Handle updates for requests
-        });
-    }
-});
-}
-
-function refreshAcceptButton() {
-    const pendingRequestsList = document.getElementById("pending-requests-list");
     
-    // Remove any existing Accept buttons
-    pendingRequestsList.querySelectorAll(".accept-request").forEach(btn => btn.remove());
-
-    // Only add Accept button if there are no assigned requests
-    const assignedCount = document.getElementById("assigned-requests-list").children.length;
-    if (assignedCount === 0 && pendingRequestsList.children.length > 0) {
-        const firstItem = pendingRequestsList.children[0];
-        const firstRequestId = firstItem.id.replace("pending-request-", "");
-        const acceptButton = document.createElement("button");
-        acceptButton.classList.add("accept-request");
-        acceptButton.setAttribute("data-request-id", firstRequestId);
-        acceptButton.textContent = "Accept";
-        firstItem.appendChild(acceptButton);
-    }
-}
-
-// WebSocket connection for dashboard updates
-const dashboardSocket = connectWebSocket(
-    'ws://' + window.location.host + '/ws/dashboard/',
-    function (e) {
-        const data = JSON.parse(e.data);
-        console.log("WebSocket message received:", data);
-
-        // Check if the data type is a new request
-        if (data.type === 'new_request') {
-            const pendingRequestsList = document.getElementById("pending-requests-list");
-            const newRequestItem = document.createElement("li");
-
-            // Ensure the request-item class is applied immediately
-            newRequestItem.id = `pending-request-${data.request_id}`;
-            newRequestItem.classList.add("request-item");
-
-            // Set the innerHTML outside of the if statement
-            newRequestItem.innerHTML = `
-                ${data.student} - ${data.description} PC Number: ${data.pc_number} Lab ID: ${data.lab_id}
-            `;
-
-            // Ensure the first item gets the Accept button
-            if (pendingRequestsList.children.length === 0) {
-                const acceptButton = document.createElement("button");
-                acceptButton.classList.add("accept-request");
-                acceptButton.setAttribute("data-request-id", data.request_id);
-                acceptButton.textContent = "Accept";
-                newRequestItem.appendChild(acceptButton);
-            }
-        
-            pendingRequestsList.appendChild(newRequestItem);
-            refreshAcceptButton();
-        
-            // Force CSS reflow to ensure styles apply
-            pendingRequestsList.style.display = "none";
-            setTimeout(() => {
-                pendingRequestsList.style.display = "block";
-            }, 50);
-        }
-
-
-        // If the data type is 'status_update', handle the status update of a request
-        else if (data.type === 'status_update') {
-            const requestId = data.request_id;
-            const newStatus = data.new_status;
-
-            // Remove from assigned requests if completed
-            if (newStatus === "completed") {
-                const assignedRequest = document.getElementById(`assigned-request-${requestId}`);
-                if (assignedRequest) assignedRequest.remove();
-
-                refreshAcceptButton();
-            }
-
-            else if (newStatus === "canceled") {
-                console.log(`Request ${requestId} was canceled.`);
-                const pendingRequest = document.getElementById(`pending-request-${requestId}`);
-                if (pendingRequest) pendingRequest.remove();
-                const assignedRequest = document.getElementById(`assigned-request-${requestId}`);
-                if (assignedRequest) assignedRequest.remove();
-            } 
-
-            else if (newStatus === "in_progress") {
-                const pendingRequest = document.getElementById(`pending-request-${requestId}`);
-                if (pendingRequest) pendingRequest.remove();
-
-                const assignedRequestsList = document.getElementById("assigned-requests-list");
-                const newAssignedItem = document.createElement("li");
-                newAssignedItem.id = `assigned-request-${requestId}`;
-                newAssignedItem.innerHTML = `
+            if (data.type === 'new_request') {
+                const pendingRequestsList = document.getElementById("pending-requests-list");
+                const newRequestItem = document.createElement("li");
+                newRequestItem.id = `pending-request-${data.request_id}`;
+                newRequestItem.classList.add("request-item");
+    
+                newRequestItem.innerHTML = `
                     ${data.student} - ${data.description} PC Number: ${data.pc_number} Lab ID: ${data.lab_id}
-                    <button class="mark-completed" data-request-id="${requestId}">Mark as Completed</button>
                 `;
-                assignedRequestsList.appendChild(newAssignedItem);
-
-                //  Refresh Accept button for next request in queue
+    
+                if (data.waiting_minutes !== undefined && data.waiting_minutes !== null) {
+                    const waitTimeSpan = document.createElement("span");
+                    waitTimeSpan.classList.add("wait-time");
+                    waitTimeSpan.textContent = ` (Waiting for ${data.waiting_minutes} minutes)`;
+                    newRequestItem.appendChild(waitTimeSpan);
+                }
+    
+                if (pendingRequestsList.children.length === 0) {
+                    const acceptButton = document.createElement("button");
+                    acceptButton.classList.add("accept-request");
+                    acceptButton.setAttribute("data-request-id", data.request_id);
+                    acceptButton.textContent = "Accept";
+                    newRequestItem.appendChild(acceptButton);
+                }
+    
+                pendingRequestsList.appendChild(newRequestItem);
                 refreshAcceptButton();
-            }           
+    
+                pendingRequestsList.style.display = "none";
+                setTimeout(() => {
+                    pendingRequestsList.style.display = "block";
+                }, 50);
+            }
+    
+            else if (data.type === 'status_update') {
+                const requestId = data.request_id;
+                const newStatus = data.new_status;
+    
+                if (newStatus === "completed") {
+                    const assignedRequest = document.getElementById(`assigned-request-${requestId}`);
+                    if (assignedRequest) assignedRequest.remove();
+                    refreshAcceptButton();
+                }
+    
+                else if (newStatus === "canceled") {
+                    const pendingRequest = document.getElementById(`pending-request-${requestId}`);
+                    if (pendingRequest) pendingRequest.remove();
+                    const assignedRequest = document.getElementById(`assigned-request-${requestId}`);
+                    if (assignedRequest) assignedRequest.remove();
+                    refreshAcceptButton();
+                }
+    
+                else if (newStatus === "in_progress") {
+                    const pendingRequest = document.getElementById(`pending-request-${requestId}`);
+                    if (pendingRequest) pendingRequest.remove();
+    
+                    const assignedRequestsList = document.getElementById("assigned-requests-list");
+                    const newAssignedItem = document.createElement("li");
+                    newAssignedItem.id = `assigned-request-${requestId}`;
+                    newAssignedItem.innerHTML = `
+                        ${data.student} - ${data.description} PC Number: ${data.pc_number} Lab ID: ${data.lab_id}
+                        <button class="mark-completed" data-request-id="${requestId}">Mark as Completed</button>
+                    `;
+                    assignedRequestsList.appendChild(newAssignedItem);
+    
+                    refreshAcceptButton();
+                }
+    
+                else if (newStatus === "pending") {
+                    const pendingRequest = document.getElementById(`pending-request-${requestId}`);
+                    if (pendingRequest) {
+                        const waitSpan = pendingRequest.querySelector(".wait-time");
+                        if (data.waiting_minutes !== undefined && data.waiting_minutes !== null) {
+                            if (!waitSpan) {
+                                const newSpan = document.createElement("span");
+                                newSpan.classList.add("wait-time");
+                                newSpan.textContent = ` (Waiting for ${data.waiting_minutes} minutes)`;
+                                pendingRequest.appendChild(newSpan);
+                            } else {
+                                waitSpan.textContent = ` (Waiting for ${data.waiting_minutes} minutes)`;
+                            }
+                        }
+                    }
+                }
+            }
         }
-    }
-);
-
-// Add event listeners for dynamically generated buttons
-document.addEventListener("click", function (event) {
-    const target = event.target;
-
-    if (target.classList.contains("accept-request")) {
-        const requestId = target.getAttribute("data-request-id");
-        fetch(`/accept_request/${requestId}/`, { method: "POST", headers: { "X-CSRFToken": "{{ csrf_token }}" } })
-            .then((response) => {
+    );
+    
+    // Event delegation for Accept and Mark Completed buttons
+    document.addEventListener("click", function (event) {
+        const target = event.target;
+    
+        if (target.classList.contains("accept-request")) {
+            const requestId = target.getAttribute("data-request-id");
+            fetch(`/accept_request/${requestId}/`, {
+                method: "POST",
+                headers: { "X-CSRFToken": "{{ csrf_token }}" }
+            }).then(response => {
                 if (response.ok) console.log("Request accepted successfully.");
             });
-    }
-
-    if (target.classList.contains("mark-completed")) {
-        const requestId = target.getAttribute("data-request-id");
-        fetch(`/mark_completed/${requestId}/`, { method: "POST", headers: { "X-CSRFToken": "{{ csrf_token }}" } })
-            .then((response) => {
+        }
+    
+        if (target.classList.contains("mark-completed")) {
+            const requestId = target.getAttribute("data-request-id");
+            fetch(`/mark_completed/${requestId}/`, {
+                method: "POST",
+                headers: { "X-CSRFToken": "{{ csrf_token }}" }
+            }).then(response => {
                 if (response.ok) console.log("Request marked as completed successfully.");
             });
-    }
-});
-</script>
+        }
+    });
+    
+    // Increment displayed wait time every 60 seconds
+    setInterval(() => {
+        document.querySelectorAll("#pending-requests-list .request-item").forEach(item => {
+            const waitSpan = item.querySelector(".wait-time");
+            if (waitSpan) {
+                const match = waitSpan.textContent.match(/\d+/);
+                if (match) {
+                    const current = parseInt(match[0]);
+                    const next = current + 1;
+                    waitSpan.textContent = ` (Waiting for ${next} minutes)`;
+                }
+            }
+        });
+    }, 60000); // 60 seconds
+    
+</script>    
 
 {% endblock %}
