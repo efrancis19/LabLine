@@ -11,10 +11,14 @@
         <h3 class="section-title">Assigned Requests</h3>
         <ul id="assigned-requests-list">
             {% for request in assigned_requests %}
-            <li id="assigned-request-{{ request.id }}" class="request-item">
-                <b>{{ request.student.username }}</b> - {{ request.description }} - Lab ID: {{ request.student.lab_id }} - PC Number: {{ request.student.pc_number }}
-                <button class="mark-completed" data-request-id="{{ request.id }}">Mark as Completed</button>
-            </li>
+                <li id="assigned-request-{{ request.id }}" class="request-card">
+                    <div class="description"><strong>{{ request.student.username }}</strong> - {{ request.description }}</div>
+                    <div class="meta-info">
+                        <span><strong>PC:</strong> {{ request.student.pc_number }}</span>
+                        <span><strong>Lab:</strong> {{ request.student.lab_id }}</span>
+                    </div>
+                    <button class="mark-completed" data-request-id="{{ request.id }}">Mark as Completed</button>
+                </li>            
             {% empty %}
             {% endfor %}
         </ul>
@@ -25,15 +29,19 @@
         <h3 class="section-title">Pending Requests</h3>
         <ul id="pending-requests-list">
             {% for request in pending_requests %}
-                <li id="pending-request-{{ request.id }}" class="request-item">
-                    <b>{{ forloop.counter }}. {{ request.student.username }}</b> - {{ request.description }} - Lab ID: {{ request.student.lab_id }} - PC Number: {{ request.student.pc_number }}
-                    {% if request.waiting_minutes is not None %}
-                        <span class="wait-time">(Waiting for {{ request.waiting_minutes }} minutes)</span>
-                    {% endif %}
+                <li id="pending-request-{{ request.id }}" class="request-card">
+                    <div class="description"><strong>{{ request.student.username }}</strong> - {{ request.description }}</div>
+                    <div class="meta-info">
+                        <span><strong>PC:</strong> {{ request.student.pc_number }}</span>
+                        <span><strong>Lab:</strong> {{ request.student.lab_id }}</span>
+                        {% if request.waiting_minutes is not None %}
+                            <span class="wait-time">(Waiting for {{ request.waiting_minutes }} minutes)</span>
+                        {% endif %}
+                    </div>
                     {% if forloop.first and assigned_requests|length == 0 %}
                         <button class="accept-request" data-request-id="{{ request.id }}">Accept</button>
                     {% endif %}
-                </li>
+                </li>            
             {% endfor %}
             </ul>
     </div>
@@ -109,7 +117,7 @@
                 const pendingRequestsList = document.getElementById("pending-requests-list");
                 const newRequestItem = document.createElement("li");
                 newRequestItem.id = `pending-request-${data.request_id}`;
-                newRequestItem.classList.add("request-item");
+                newRequestItem.classList.add("request-card");
     
                 newRequestItem.innerHTML = `
                     ${data.student} - ${data.description} PC Number: ${data.pc_number} Lab ID: ${data.lab_id}
@@ -164,6 +172,7 @@
                     const assignedRequestsList = document.getElementById("assigned-requests-list");
                     const newAssignedItem = document.createElement("li");
                     newAssignedItem.id = `assigned-request-${requestId}`;
+                    newAssignedItem.classList.add("request-card");
                     newAssignedItem.innerHTML = `
                         ${data.student} - ${data.description} PC Number: ${data.pc_number} Lab ID: ${data.lab_id}
                         <button class="mark-completed" data-request-id="${requestId}">Mark as Completed</button>
@@ -217,7 +226,7 @@
             });
         }
     });
-    
+
     // Increment displayed wait time every 60 seconds
     setInterval(() => {
         document.querySelectorAll("#pending-requests-list .request-item").forEach(item => {
@@ -232,7 +241,7 @@
             }
         });
     }, 60000); // 60 seconds
-    
+
 </script>    
 
 {% endblock %}

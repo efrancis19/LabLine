@@ -12,23 +12,23 @@
         <p>Help requests you make will appear here:</p>
         <ul id="help-requests-list">
             {% for request in help_requests %}
-            <li id="request-{{ request.id }}" class="request-item">
-                {{ request.description }} -
-                Status: <b><span class="status">{{ request.status }}</span></b>
-                <span class="queue-position">
-                    {% if request.status in "pending,in_progress" and request.queue_position %}
-                        (Position in queue: {{ request.queue_position }})
+                <li id="request-{{ request.id }}" class="request-card">
+                    <div class="description">{{ request.description }}</div>
+                    <div class="meta-info">
+                        <span><strong>Status:</strong> <span class="status">{{ request.status }}</span></span>
+                        {% if request.queue_position %}
+                            <span><strong>Position in queue:</strong> {{ request.queue_position }}</span>
+                        {% endif %}
+                        {% if request.status == "pending" and request.estimated_wait_time %}
+                            <span class="wait-time">Estimated wait: {{ request.estimated_wait_time }} minutes</span>
+                        {% endif %}
+                        <span><strong>PC Number:</strong> {{ user.pc_number }}</span>
+                        <span><strong>Lab ID:</strong> {{ user.lab_id }}</span>
+                    </div>
+                    {% if request.status == "pending" or request.status == "in_progress" %}
+                        <button class="cancel-request" data-request-id="{{ request.id }}">Cancel</button>
                     {% endif %}
-                </span>    
-                {% if request.status == "pending" and request.estimated_wait_time %}
-                    <span class="wait-time">Estimated wait: {{ request.estimated_wait_time }} minutes</span>
-                {% endif %}            
-                {% if request.status == "pending" %}
-                    <button class="cancel-request" data-request-id="{{ request.id }}">Cancel</button>
-                {% elif request.status == "in_progress" %}
-                    <button class="cancel-request" data-request-id="{{ request.id }}">Cancel</button>
-                {% endif %}
-            </li>
+                </li>            
             {% endfor %}
         </ul>        
     </div>
@@ -81,7 +81,7 @@
         function (event) {
             const data = JSON.parse(event.data);
             console.log("WebSocket message received:", data);
-        
+
             // Display notification messages
             if (data.message) {
                 const notificationList = document.getElementById("notification-list");
@@ -89,14 +89,14 @@
                 notificationItem.textContent = data.message;
                 notificationList.appendChild(notificationItem);
             }
-        
+
             // Handle status update messages
             if (data.type === 'status_update') {
                 const requestId = data.request_id;
                 const newStatus = data.new_status;
                 const position = data.queue_position;
                 const estimatedWaitTime = data.estimated_wait_time;
-            
+
                 const requestElement = document.getElementById(`request-${requestId}`);
                 if (requestElement) {
                     // Update status text
@@ -104,7 +104,7 @@
                     if (statusElement) {
                         statusElement.textContent = newStatus;
                     }
-                
+
                     // Update queue position
                     const positionElement = requestElement.querySelector(".queue-position");
                     if (newStatus === "pending") {
@@ -115,7 +115,7 @@
                                 positionElement.textContent = "";
                             }
                         }
-                    
+
                         // Add or update wait time element
                         let waitTimeElement = requestElement.querySelector(".wait-time");
                         if (!waitTimeElement) {
@@ -123,24 +123,24 @@
                             waitTimeElement.classList.add("wait-time");
                             requestElement.appendChild(waitTimeElement);
                         }
-                    
+
                         if (estimatedWaitTime !== undefined && estimatedWaitTime !== null) {
                             waitTimeElement.textContent = ` Estimated wait: ${estimatedWaitTime} minutes`;
                         } else {
                             waitTimeElement.textContent = "";
                         }
-                    
+
                     } else {
                         // If status is in_progress or completed/canceled — clean up
                         if (positionElement) {
                             positionElement.textContent = "";
                         }
-                    
+
                         const waitTimeElement = requestElement.querySelector(".wait-time");
                         if (waitTimeElement) {
                             waitTimeElement.remove();
                         }
-                    
+
                         // Remove action buttons
                         const buttons = requestElement.querySelectorAll("button");
                         buttons.forEach(button => button.remove());
