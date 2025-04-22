@@ -286,7 +286,7 @@ def submit_request(request):
                         "student": request.user.username,
                         "pc_number": request.user.pc_number,
                         "lab_id": request.user.lab_id,
-                        "waiting_minutes": waiting_minutes,  # ✅ Added this!
+                        "waiting_minutes": waiting_minutes,
                     }
                 )
             
