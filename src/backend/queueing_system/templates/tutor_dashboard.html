@@ -120,15 +120,17 @@
                 newRequestItem.classList.add("request-card");
     
                 newRequestItem.innerHTML = `
-                    ${data.student} - ${data.description} PC Number: ${data.pc_number} Lab ID: ${data.lab_id}
+                    <div class="description"><strong>${data.student}</strong> - ${data.description}</div>
+                    <div class="meta-info">
+                        <span><strong>PC:</strong> ${data.pc_number}</span>
+                        <span><strong>Lab:</strong> ${data.lab_id}</span>
+                        ${data.waiting_minutes !== undefined && data.waiting_minutes !== null
+                            ? `<span class="wait-time">(Waiting for ${data.waiting_minutes} minutes)</span>` 
+                            : ""
+                        }
+                    </div>
                 `;
     
-                if (data.waiting_minutes !== undefined && data.waiting_minutes !== null) {
-                    const waitTimeSpan = document.createElement("span");
-                    waitTimeSpan.classList.add("wait-time");
-                    waitTimeSpan.textContent = ` (Waiting for ${data.waiting_minutes} minutes)`;
-                    newRequestItem.appendChild(waitTimeSpan);
-                }
     
                 if (pendingRequestsList.children.length === 0) {
                     const acceptButton = document.createElement("button");
@@ -229,7 +231,7 @@
 
     // Increment displayed wait time every 60 seconds
     setInterval(() => {
-        document.querySelectorAll("#pending-requests-list .request-item").forEach(item => {
+        document.querySelectorAll("#pending-requests-list .request-card").forEach(item => {
             const waitSpan = item.querySelector(".wait-time");
             if (waitSpan) {
                 const match = waitSpan.textContent.match(/\d+/);

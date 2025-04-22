@@ -17,6 +17,8 @@ class DashboardConsumer(AsyncWebsocketConsumer):
                 self.group_name = f"tutor_{self.user_id}"
                 if self.user_id not in ONLINE_TUTORS:
                     ONLINE_TUTORS.append(self.user_id)
+                    print("ONLINE_TUTORS after connect:", ONLINE_TUTORS)
+
 
             elif user_type == "lecturer":
                 self.group_name = "lecturers_group"
@@ -34,6 +36,7 @@ class DashboardConsumer(AsyncWebsocketConsumer):
         # Remove tutor from list if they disconnect
         if hasattr(self, 'user_id') and self.user_id in ONLINE_TUTORS:
             ONLINE_TUTORS.remove(self.user_id)
+            print("ONLINE_TUTORS after disconnect:", ONLINE_TUTORS)
 
     async def update_dashboard(self, event):
         message = {

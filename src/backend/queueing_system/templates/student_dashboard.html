@@ -4,7 +4,7 @@
 
 {% block content %}
 <div class="container mt-4">
-    <h2 class="text-center mb-4">Welcome, {{ user.username }}, ({{ user.user_type }}, PC Number:{{ user.pc_number }}, Lab ID:{{ user.lab_id }})</h2>
+    <h2 class="text-center mb-4">Welcome, {{ user.username }} ( PC: {{ user.pc_number }}, Lab: {{ user.lab_id }})</h2>
 
 
     <div class="section-box mb-4">
@@ -17,7 +17,7 @@
                     <div class="meta-info">
                         <span><strong>Status:</strong> <span class="status">{{ request.status }}</span></span>
                         {% if request.queue_position %}
-                            <span><strong>Position in queue:</strong> {{ request.queue_position }}</span>
+                            <span class="queue-position"><strong>Position in queue:</strong> {{ request.queue_position }}</span>
                         {% endif %}
                         {% if request.status == "pending" and request.estimated_wait_time %}
                             <span class="wait-time">Estimated wait: {{ request.estimated_wait_time }} minutes</span>
